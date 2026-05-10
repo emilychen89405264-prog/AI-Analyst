@@ -31,6 +31,7 @@ public/trade_history.json
 !package.json
 !tsconfig.json
 !metadata.json
+!vercel.json
 
 # IDE / System
 .vscode/
