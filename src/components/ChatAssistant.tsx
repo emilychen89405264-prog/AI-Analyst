@@ -47,7 +47,8 @@ export const ChatAssistant: React.FC<{ apiUrl: string; authPin: string }> = ({ a
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': authPin 
+          'Authorization': authPin,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({
           message: userMsg,

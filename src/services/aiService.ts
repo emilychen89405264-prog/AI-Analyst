@@ -83,7 +83,9 @@ export async function getAnalystInsight(assetType: string, assetName: string, ti
   // --- 優先嘗試從後端獲取同步數據 ---
   try {
     const API_BASE = localStorage.getItem('customApiUrl') || `http://${window.location.hostname}:3001`;
-    const res = await fetch(`${API_BASE}/api/analyze?symbol=${assetName}&timeframe=${timeframe}`);
+    const res = await fetch(`${API_BASE}/api/analyze?symbol=${assetName}&timeframe=${timeframe}`, {
+      headers: { 'ngrok-skip-browser-warning': 'true' }
+    });
     const serverData = await res.json();
     if (serverData && !serverData.needs_refresh) {
       console.log('✅ [SYNC] Using synchronized analysis from server.');
@@ -249,7 +251,10 @@ ${TRADING_STRATEGY_SKILL}
       const API_BASE = localStorage.getItem('customApiUrl') || `http://${window.location.hostname}:3001`;
       fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
         body: JSON.stringify({ symbol: assetName, timeframe, data: result })
       });
     } catch (e) {}

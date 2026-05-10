@@ -232,7 +232,11 @@ export default function App() {
             const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
             fetch(`${API_BASE}/api/close-trade`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': THE_PIN },
+              headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': THE_PIN,
+                'ngrok-skip-browser-warning': 'true'
+              },
               body: JSON.stringify({ symbol: op.symbol, mt5_symbol: mt5Symbol })
             });
           }
@@ -262,7 +266,10 @@ export default function App() {
         const mt5Symbols = data.map(op => MT5_SYMBOL_MAP[op.symbol] || op.symbol.replace('/', ''));
         const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
         const priceRes = await fetch(`${API_BASE}/api/prices?symbols=${encodeURIComponent(mt5Symbols.join(','))}&_t=${Date.now()}`, {
-          headers: { 'Authorization': THE_PIN }
+          headers: { 
+            'Authorization': THE_PIN,
+            'ngrok-skip-browser-warning': 'true'
+          }
         });
         
         const allPrices = await priceRes.json();
@@ -341,7 +348,8 @@ export default function App() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': THE_PIN 
+          'Authorization': THE_PIN,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({ symbol: yfSymbol, mt5_symbol: mt5Symbol, signal: op }),
       });

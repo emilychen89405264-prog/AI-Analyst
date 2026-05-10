@@ -24,7 +24,11 @@ export const TradeDashboard: React.FC<{ apiUrl?: string; authPin?: string }> = (
   const fetchTrades = () => {
     setLoading(true);
     const API_BASE = apiUrl || `http://${window.location.hostname}:3001`;
-    fetch(`${API_BASE}/api/trade-history?t=` + Date.now()) // 從後端獲取
+    fetch(`${API_BASE}/api/trade-history?t=` + Date.now(), {
+      headers: {
+        'ngrok-skip-browser-warning': 'true'
+      }
+    })
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -56,7 +60,10 @@ export const TradeDashboard: React.FC<{ apiUrl?: string; authPin?: string }> = (
     try {
       const res = await fetch(`${API_BASE}/api/sync-profits`, { 
         method: 'POST',
-        headers: { 'Authorization': authPin || '8888' },
+        headers: { 
+          'Authorization': authPin || '8888',
+          'ngrok-skip-browser-warning': 'true'
+        },
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -317,7 +324,8 @@ export const TradeDashboard: React.FC<{ apiUrl?: string; authPin?: string }> = (
                                   method: 'POST',
                                   headers: { 
                                     'Content-Type': 'application/json',
-                                    'Authorization': authPin || '8888'
+                                    'Authorization': authPin || '8888',
+                                    'ngrok-skip-browser-warning': 'true'
                                   },
                                   body: JSON.stringify({ symbol: trade.symbol, mt5_symbol: trade.symbol })
                                 });
