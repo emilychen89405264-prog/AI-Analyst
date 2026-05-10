@@ -23,7 +23,8 @@ export const TradeDashboard: React.FC<{ apiUrl?: string; authPin?: string }> = (
 
   const fetchTrades = () => {
     setLoading(true);
-    fetch('/trade_history.json?t=' + Date.now()) // 加 timestamp 避免 cache
+    const API_BASE = apiUrl || `http://${window.location.hostname}:3001`;
+    fetch(`${API_BASE}/api/trade-history?t=` + Date.now()) // 從後端獲取
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {

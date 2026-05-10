@@ -230,6 +230,20 @@ app.post('/api/sync-profits', authMiddleware, (req, res) => {
   });
 });
 
+app.get('/api/trade-history', (req, res) => {
+  try {
+    const historyPath = path.join(__dirname, 'public', 'trade_history.json');
+    if (fs.existsSync(historyPath)) {
+      const data = fs.readFileSync(historyPath, 'utf-8');
+      res.json(JSON.parse(data));
+    } else {
+      res.json([]);
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to read trade history' });
+  }
+});
+
 app.post('/api/chat', authMiddleware, async (req, res) => {
   const { message, history } = req.body;
   try {
