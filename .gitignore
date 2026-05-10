@@ -1,7 +1,22 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
 # Node.js
 node_modules/
 dist/
+dist-ssr
+*.local
+
+# Environment variables (SECURITY!)
 .env
+.env.*
+!.env.example
 
 # Python
 __pycache__/
@@ -10,10 +25,19 @@ __pycache__/
 venv/
 .venv/
 
-# App Data (非常重要！不要上傳你的交易紀錄)
+# App Data (非常重要！不要上傳你的真實交易紀錄)
 public/trade_history.json
+*.json
+!package.json
+!tsconfig.json
+!metadata.json
 
-# IDE
+# IDE / System
 .vscode/
 .idea/
 .DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
