@@ -175,6 +175,9 @@ export default function App() {
   const THE_PIN = "8888"; 
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // 增加安全檢查，確保在瀏覽器環境執行
+    if (typeof window === 'undefined') return false;
+    
     if (urlPin === THE_PIN) {
       localStorage.setItem('isAuth', 'true');
       return true;

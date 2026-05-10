@@ -1,7 +1,14 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { TRADING_STRATEGY_SKILL } from './tradingStrategy';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// 優先從 vite.config.ts 的 define 注入中讀取，若無則嘗試 import.meta.env
+const API_KEY = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) || import.meta.env.VITE_GEMINI_API_KEY || '';
+
+if (!API_KEY) {
+  console.error('❌ [CRITICAL] GEMINI_API_KEY is missing. AI features will not work.');
+}
+
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 export interface CandleData {
   time: string;
