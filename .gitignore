@@ -1,8 +1,19 @@
+# Node.js
 node_modules/
-build/
 dist/
-coverage/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# App Data (非常重要！不要上傳你的交易紀錄)
+public/trade_history.json
+
+# IDE
+.vscode/
+.idea/
 .DS_Store
-*.log
-.env*
-!.env.example

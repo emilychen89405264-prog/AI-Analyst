@@ -1,368 +1,641 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, TrendingUp, Coins, LineChart, BrainCircuit, RefreshCcw, ChevronDown, Clock, Eye, Sparkles } from 'lucide-react';
-import { getAnalystInsight, AIAnalysis } from './services/aiService';
+import { 
+  Activity, TrendingUp, Coins, LineChart, BrainCircuit, RefreshCcw, 
+  ChevronDown, Clock, Eye, Sparkles, Globe, BarChart3, Rocket, 
+  ShieldCheck, Zap, Info, ArrowUpRight, ArrowDownRight, Target, Menu, X, Lock
+} from 'lucide-react';
+import { getAnalystInsight, AIAnalysis, getGlobalOpportunities, Opportunity } from './services/aiService';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdvancedRealTimeChart } from "react-ts-tradingview-widgets";
-import { MarketChart } from './components/MarketChart';
+import { TradeDashboard } from './components/TradeDashboard';
+import { ChatAssistant } from './components/ChatAssistant';
 
-export type Timeframe = 'D1' | 'H4' | 'H1' | 'M30' | 'M15' | 'M5' | 'M1';
+// --- Types & Constants ---
+export type AppView = 'macro' | 'forex' | 'stock' | 'crypto' | 'detail' | 'dashboard';
 
-type AssetCategory = 'forex' | 'stock' | 'index' | 'commodity' | 'crypto';
-type ViewMode = 'tradingview' | 'ai-expert';
-
-interface AssetCategoryInfo {
-  id: AssetCategory;
-  name: string;
-  icon: React.ElementType;
-  symbols: string[];
-}
-
-const ASSETS: AssetCategoryInfo[] = [
-  { id: 'forex', name: '外匯 (Forex)', icon: Activity, symbols: ['EUR/USD', 'USD/JPY', 'GBP/USD', 'AUD/USD', 'USD/CAD', 'USD/CHF', 'NZD/USD', 'EUR/JPY', 'GBP/JPY', 'EUR/GBP'] },
-  { id: 'stock', name: '美股 (Stocks)', icon: TrendingUp, symbols: ['AAPL', 'TSLA', 'NVDA', 'MSFT'] },
-  { id: 'index', name: '指數 (Indices)', icon: LineChart, symbols: ['US30', 'NAS100', 'SPX500'] },
-  { id: 'commodity', name: '商品 (Commodities)', icon: Activity, symbols: ['XAU/USD', 'XAG/USD'] },
-  { id: 'crypto', name: '加密貨幣 (Crypto)', icon: Coins, symbols: ['BTC/USD', 'ETH/USD', 'SOL/USD', 'BNB/USD', 'ADA/USD'] },
+const SIDEBAR_ITEMS = [
+  { id: 'macro', name: '全球宏觀趨勢', icon: Globe },
+  { id: 'forex', name: '外匯市場分析', icon: BarChart3 },
+  { id: 'stock', name: '全球股票機會', icon: TrendingUp },
+  { id: 'crypto', name: '加密貨幣觀察', icon: Coins },
 ];
 
-const TIMEFRAMES: { id: Timeframe; label: string }[] = [
-  { id: 'D1', label: '日線 (D1)' },
-  { id: 'H4', label: '4小時 (H4)' },
-  { id: 'H1', label: '1小時 (H1)' },
-  { id: 'M30', label: '30分 (M30)' },
-  { id: 'M15', label: '15分 (M15)' },
-  { id: 'M5', label: '5分 (M5)' },
-  { id: 'M1', label: '1分 (M1)' },
-];
-
-const getSymbolLabel = (sym: string) => {
-  if (sym === 'US30') return 'US30 (US Wall Street 30 Index)';
-  if (sym === 'NAS100') return 'NAS100 (Nasdaq 100 Index)';
-  if (sym === 'SPX500') return 'SPX500 (S&P 500 Index)';
-  return sym;
+const YF_SYMBOL_MAP: Record<string, string> = {
+  'EUR/USD': 'EURUSD=X', 'USD/JPY': 'USDJPY=X', 'GBP/USD': 'GBPUSD=X', 'US30': 'YM=F', 
+  'NAS100': 'NQ=F', 'XAU/USD': 'GC=F', 'AAPL': 'AAPL', 'TSLA': 'TSLA', 'NVDA': 'NVDA'
 };
 
-const getTVSymbol = (sym: string) => {
-  const map: Record<string, string> = {
-    'EUR/USD': 'FX:EURUSD',
-    'GBP/USD': 'FX:GBPUSD',
-    'USD/JPY': 'FX:USDJPY',
-    'AUD/USD': 'FX:AUDUSD',
-    'USD/CAD': 'FX:USDCAD',
-    'USD/CHF': 'FX:USDCHF',
-    'NZD/USD': 'FX:NZDUSD',
-    'EUR/JPY': 'FX:EURJPY',
-    'GBP/JPY': 'FX:GBPJPY',
-    'EUR/GBP': 'FX:EURGBP',
-    'BTC/USD': 'BINANCE:BTCUSDT',
-    'ETH/USD': 'BINANCE:ETHUSDT',
-    'SOL/USD': 'BINANCE:SOLUSDT',
-    'BNB/USD': 'BINANCE:BNBUSDT',
-    'ADA/USD': 'BINANCE:ADAUSDT',
-    'US30': 'CAPITALCOM:US30',
-    'NAS100': 'CAPITALCOM:NAS100',
-    'SPX500': 'OANDA:SPX500USD',
-    'XAU/USD': 'OANDA:XAUUSD',
-    'XAG/USD': 'OANDA:XAGUSD',
-    'AAPL': 'NASDAQ:AAPL',
-    'TSLA': 'NASDAQ:TSLA',
-    'NVDA': 'NASDAQ:NVDA',
-    'MSFT': 'NASDAQ:MSFT',
-  };
-  return map[sym] || sym;
+const MT5_SYMBOL_MAP: Record<string, string> = {
+  'EUR/USD': 'EURUSD', 
+  'EURUSD': 'EURUSD',
+  'US30': 'US30M', 
+  'NAS100': 'USTEC', 
+  'XAU/USD': 'XAUUSD',
+  'XAUUSD': 'XAUUSD',
+  'USDJPY': 'USDJPY'
 };
 
-const getTVInterval = (tf: Timeframe) => {
-  const map: Record<Timeframe, "D" | "240" | "60" | "30" | "15" | "5" | "1"> = {
-    'D1': 'D', 'H4': '240', 'H1': '60', 'M30': '30', 'M15': '15', 'M5': '5', 'M1': '1',
-  };
-  return map[tf];
-}
+// --- Components ---
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState<AssetCategory>('forex');
-  const [activeSymbol, setActiveSymbol] = useState<string>(ASSETS[0].symbols[0]);
-  const [activeTimeframe, setActiveTimeframe] = useState<Timeframe>('D1');
-  const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
-  const [loadingAnalysis, setLoadingAnalysis] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('tradingview');
-
-  const activeCategory = ASSETS.find(a => a.id === activeTab)!;
-
-  const handleTabChange = (tabId: AssetCategory) => {
-    setActiveTab(tabId);
-    const category = ASSETS.find(a => a.id === tabId)!;
-    setActiveSymbol(category.symbols[0]);
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const fetchAnalysis = async () => {
-        setLoadingAnalysis(true);
-        try {
-          const result = await getAnalystInsight(activeCategory.name, getSymbolLabel(activeSymbol), activeTimeframe);
-          setAnalysis(result);
-        } catch (error) {
-          console.error(error);
-        } finally {
-          setLoadingAnalysis(false);
-        }
-      };
-      fetchAnalysis();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [activeTab, activeSymbol, activeTimeframe, activeCategory.name]);
-
-  const tvSymbolStr = getTVSymbol(activeSymbol);
-  const tvIntervalStr = getTVInterval(activeTimeframe);
-
+const SignalCard: React.FC<{ 
+  opportunity: Opportunity; 
+  onExecute: (op: Opportunity) => void;
+  executing: boolean;
+  verified?: boolean;
+}> = ({ opportunity, onExecute, executing, verified }) => {
   return (
-    <div className="min-h-screen bg-[#0f0f1a] text-gray-200 font-sans selection:bg-blue-500/30">
-      <header className="bg-[#151521] border-b border-gray-800 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <LineChart className="w-6 h-6 text-white" />
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-[#151521]/80 backdrop-blur-md rounded-2xl border border-gray-800/50 overflow-hidden hover:border-blue-500/50 transition-all group"
+    >
+      <div className="p-5 space-y-4">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">
+              {opportunity.name} ({opportunity.symbol})
+            </h3>
+            <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+              <Clock size={12} /> {new Date().toLocaleTimeString()} 更新
+              <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/20">
+                1H 結清
+              </span>
             </div>
-            <h1 className="text-xl font-bold text-white tracking-tight">ProAnalyst <span className="text-blue-500">AI</span></h1>
           </div>
-          <div className="bg-[#1e1e2d] px-4 py-1.5 rounded-full flex items-center gap-3 border border-gray-800">
-             <div className="flex bg-[#151521] p-0.5 rounded-lg border border-gray-800">
-               <button 
-                 onClick={() => setViewMode('tradingview')}
-                 className={cn(
-                   "flex items-center gap-2 px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all",
-                   viewMode === 'tradingview' ? "bg-gray-800 text-white" : "text-gray-500 hover:text-gray-300"
-                 )}
-               >
-                 <Eye className="w-3 h-3" />
-                 TradingView
-               </button>
-               <button 
-                 onClick={() => setViewMode('ai-expert')}
-                 className={cn(
-                   "flex items-center gap-2 px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all",
-                   viewMode === 'ai-expert' ? "bg-blue-600 text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
-                 )}
-               >
-                 <Sparkles className="w-3 h-3" />
-                 AI Expert Drawings
-               </button>
-             </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
-          <div className="flex space-x-2 bg-[#151521] p-1.5 rounded-xl border border-gray-800 w-fit overflow-x-auto">
-            {ASSETS.map((asset) => (
-              <button
-                key={asset.id}
-                onClick={() => handleTabChange(asset.id)}
-                className={cn(
-                  "flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap",
-                  activeTab === asset.id ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
-                )}
-              >
-                <asset.icon className="w-4 h-4" />
-                {asset.name}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative">
-              <select
-                value={activeSymbol}
-                onChange={(e) => setActiveSymbol(e.target.value)}
-                className="appearance-none bg-[#151521] border border-gray-700 text-white text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-auto min-w-[12rem] p-3 pr-10 outline-none cursor-pointer transition-all hover:border-gray-600 shadow-lg"
-              >
-                {activeCategory.symbols.map(sym => (
-                  <option key={sym} value={sym}>{getSymbolLabel(sym)}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
-                <ChevronDown className="w-4 h-4" />
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-                <Clock className="w-4 h-4" />
-              </div>
-              <select
-                value={activeTimeframe}
-                onChange={(e) => setActiveTimeframe(e.target.value as Timeframe)}
-                className="appearance-none bg-[#151521] border border-gray-700 text-white text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-40 p-3 pl-10 pr-10 outline-none cursor-pointer transition-all hover:border-gray-600 shadow-lg"
-              >
-                {TIMEFRAMES.map(tf => (
-                  <option key={tf.id} value={tf.id}>{tf.label}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
-                <ChevronDown className="w-4 h-4" />
-              </div>
-            </div>
+          <div className={cn(
+            "px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 text-sm shadow-lg",
+            opportunity.action === 'BUY' ? "bg-green-500 text-white" : "bg-red-500 text-white"
+          )}>
+            {opportunity.action === 'BUY' ? <ArrowUpRight size={16}/> : <ArrowDownRight size={16}/>}
+            {opportunity.action === 'BUY' ? '做多 (LONG)' : '做空 (SHORT)'}
           </div>
         </div>
 
-        <div className="space-y-8 flex-1 flex flex-col">
-          <div className="w-full bg-[#1e1e2d] rounded-xl border border-gray-800 overflow-hidden shadow-2xl h-[500px] relative">
-            {viewMode === 'tradingview' ? (
-              <AdvancedRealTimeChart 
-                theme="dark"
-                symbol={tvSymbolStr}
-                interval={tvIntervalStr}
-                timezone="Asia/Taipei"
-                locale="zh_TW"
-                autosize
-                hide_side_toolbar={false}
-                allow_symbol_change={false}
-                save_image={false}
-              />
-            ) : (
-              <div className="w-full h-full">
-                {loadingAnalysis ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
-                    <RefreshCcw className="w-10 h-10 animate-spin text-blue-500" />
-                    <p className="text-blue-400 font-medium animate-pulse">AI 分析師正為您在 K 線圖上劃線中...</p>
-                  </div>
-                ) : (
-                  analysis && analysis.candles.length > 0 ? (
-                    <MarketChart 
-                      candles={analysis.candles}
-                      trendlines={analysis.trendlines}
-                      fibLevels={analysis.fibLevels}
-                      signals={analysis.signals}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-500">
-                      暫無繪圖數據，請稍後幾秒或切換商品重新生成。
-                    </div>
-                  )
-                )}
-                <div className="absolute top-6 left-6 z-10 bg-[#151521]/90 backdrop-blur-md p-3 rounded-lg border border-gray-700 shadow-xl pointer-events-none">
-                  <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider">
-                    <div className="flex items-center gap-1.5 text-blue-400">
-                      <div className="w-2.5 h-0.5 bg-blue-400 rounded-full" /> 趨勢連線
-                    </div>
-                    <div className="flex items-center gap-1.5 text-yellow-500">
-                      <div className="w-2.5 h-0.5 border-t border-dashed border-yellow-500" /> FIB 關卡
-                    </div>
-                    <div className="flex items-center gap-1.5 text-green-500">
-                      <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.3)]" /> 進場訊號
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+        {/* Confidence & Win Rate */}
+        <div className="flex items-center gap-4">
+          <div className="bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <ShieldCheck size={14} className="text-green-500" />
+            <span className="text-xs font-bold text-green-400">預估勝率 {opportunity.winRate}%</span>
           </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-[#151521] rounded-xl border border-gray-800 p-6 shadow-xl flex flex-col h-full">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <BrainCircuit className="w-5 h-5 text-blue-500" />
-                AI 量化交易策略中心
-              </h3>
-              
-              {loadingAnalysis ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-gray-400 space-y-4">
-                  <RefreshCcw className="w-8 h-8 animate-spin text-blue-500" />
-                  <p className="text-sm animate-pulse">正在為您運算交易策略與點位...</p>
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col">
-                  {analysis && (
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="bg-[#1e1e2d] p-4 rounded-lg border border-gray-800/50">
-                        <p className="text-gray-400 text-xs mb-1">當前趨勢 (Trend)</p>
-                        <p className={cn("font-bold text-lg", analysis.trend.includes('多') ? 'text-green-500' : analysis.trend.includes('空') ? 'text-red-500' : 'text-yellow-500')}>
-                          {analysis.trend}
-                        </p>
-                      </div>
-                      <div className="bg-[#1e1e2d] p-4 rounded-lg border border-gray-800/50">
-                        <p className="text-gray-400 text-xs mb-1">建議進場 (Entry)</p>
-                        <p className="text-white font-mono text-lg">{analysis.entryPrice}</p>
-                      </div>
-                      <div className="bg-red-900/10 p-4 rounded-lg border border-red-900/30">
-                        <p className="text-red-400 text-xs mb-1">止損點位 (SL)</p>
-                        <p className="text-red-400 font-mono text-lg">{analysis.stopLoss}</p>
-                      </div>
-                      <div className="bg-green-900/10 p-4 rounded-lg border border-green-900/30">
-                        <p className="text-green-400 text-xs mb-1">止盈目標 (TP)</p>
-                        <p className="text-green-400 font-mono text-lg">{analysis.takeProfit}</p>
-                      </div>
-                      <div className="bg-[#1e1e2d] p-4 rounded-lg border border-gray-800/50">
-                        <p className="text-gray-400 text-xs mb-1">下檔支撐 (Support)</p>
-                        <p className="text-gray-300 font-mono text-base">{analysis.support}</p>
-                      </div>
-                      <div className="bg-[#1e1e2d] p-4 rounded-lg border border-gray-800/50">
-                        <p className="text-gray-400 text-xs mb-1">上檔壓力 (Resistance)</p>
-                        <p className="text-gray-300 font-mono text-base">{analysis.resistance}</p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="mt-auto bg-blue-900/10 border border-blue-800/30 p-5 rounded-lg flex-1 flex flex-col justify-center">
-                    <h4 className="text-blue-400 font-bold mb-3 flex items-center gap-2 text-base">
-                      <Activity className="w-5 h-5" />
-                      AI 綜合操作建議
-                    </h4>
-                    <p className="text-gray-300 text-base leading-relaxed">
-                      {analysis?.advice || '無操作建議'}
-                    </p>
-                  </div>
-                </div>
+          <div className="bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <Zap size={14} className="text-blue-500" />
+            <span className="text-xs font-bold text-blue-400">信心指數 {opportunity.confidence}%</span>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="space-y-3">
+          <div className="bg-[#0f0f18] rounded-xl p-3 border border-gray-800/50">
+            <div className="flex items-center gap-1.5 text-blue-400 text-xs font-bold mb-1">
+              <Rocket size={12} /> 獲利關鍵催化劑
+            </div>
+            <p className="text-sm text-gray-400 leading-relaxed">{opportunity.catalyst}</p>
+          </div>
+          <div className="bg-[#0f0f18] rounded-xl p-3 border border-gray-800/50">
+            <div className="flex items-center gap-1.5 text-purple-400 text-xs font-bold mb-1">
+              <BarChart3 size={12} /> 技術與量化邏輯
+            </div>
+            <p className="text-sm text-gray-400 leading-relaxed">{opportunity.logic}</p>
+          </div>
+        </div>
+
+        {/* Order Details */}
+        <div className="grid grid-cols-3 gap-2 py-2 border-t border-gray-800/50">
+          <div>
+            <div className="text-[10px] text-gray-500 uppercase font-bold text-center">Entry</div>
+            <div className="text-sm font-mono text-white text-center flex flex-col items-center gap-1">
+              {(opportunity.entryPrice || 0).toFixed(opportunity.symbol.includes('/') ? 5 : 2)}
+              {verified && (
+                <span className="text-[8px] text-green-500 font-bold bg-green-500/10 px-1 rounded flex items-center gap-0.5">
+                  <ShieldCheck size={8} /> MT5
+                </span>
               )}
             </div>
-
-            <div className="bg-[#151521] rounded-xl border border-gray-800 flex flex-col shadow-xl overflow-hidden relative">
-              <div className="px-6 py-4 border-b border-gray-800 bg-gradient-to-r from-[#151521] to-[#1a1a2e]">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <BrainCircuit className="w-5 h-5 text-purple-500" />
-                  資深分析師洞察
-                </h2>
-                <p className="text-xs text-gray-400 mt-1">基於全球總經與技術線型綜合評估</p>
-              </div>
-              <div className="p-6 flex-1">
-                {loadingAnalysis ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
-                    <RefreshCcw className="w-8 h-8 animate-spin text-blue-500" />
-                    <p className="text-sm">正在生成深度分析報告...</p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div>
-                      <h4 className="text-white font-medium mb-2 flex items-center gap-2 text-sm uppercase tracking-wider">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                        總經環境與新聞
-                      </h4>
-                      <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap pl-3 border-l border-gray-800">
-                        {analysis?.macro}
-                      </p>
-                    </div>
-                    <div>
-                      <h4 className="text-white font-medium mb-2 flex items-center gap-2 text-sm uppercase tracking-wider">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        訊號解析
-                      </h4>
-                      <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap pl-3 border-l border-gray-800">
-                        {analysis?.signal}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="px-6 py-4 border-t border-gray-800 bg-[#11111a] mt-auto">
-                <p className="text-[10px] text-gray-600 leading-tight">
-                  免責聲明：本分析由 AI 模型基於歷史數據與聯網新聞生成，僅供參考，不構成任何投資建議。市場有風險，投資需謹慎。
-                </p>
-              </div>
+          </div>
+          <div>
+            <div className="text-[10px] text-gray-500 uppercase font-bold text-center">TP (目標)</div>
+            <div className="text-sm font-mono text-green-400 text-center">
+              {opportunity.entryPrice 
+                ? (opportunity.action === 'BUY' 
+                    ? (opportunity.entryPrice * (1 + opportunity.tp_pct/100))
+                    : (opportunity.entryPrice * (1 - opportunity.tp_pct/100))
+                  ).toFixed(opportunity.symbol.includes('/') ? 5 : 2)
+                : '---'
+              }
             </div>
+            <div className="text-[10px] text-green-500/50 text-center">+{opportunity.tp_pct}%</div>
+          </div>
+          <div>
+            <div className="text-[10px] text-gray-500 uppercase font-bold text-center">SL (保護)</div>
+            <div className="text-sm font-mono text-red-400 text-center">
+              {opportunity.entryPrice 
+                ? (opportunity.action === 'BUY' 
+                    ? (opportunity.entryPrice * (1 - opportunity.sl_pct/100))
+                    : (opportunity.entryPrice * (1 + opportunity.sl_pct/100))
+                  ).toFixed(opportunity.symbol.includes('/') ? 5 : 2)
+                : '---'
+              }
+            </div>
+            <div className="text-[10px] text-red-500/50 text-center">-{opportunity.sl_pct}%</div>
           </div>
         </div>
+
+        {/* Action */}
+        <button
+          onClick={() => onExecute(opportunity)}
+          disabled={executing}
+          className={cn(
+            "w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg",
+            executing 
+              ? "bg-gray-700 cursor-not-allowed" 
+              : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white active:scale-[0.98]"
+          )}
+        >
+          {executing ? <RefreshCcw size={18} className="animate-spin" /> : <Sparkles size={18} />}
+          立即在 MT5 執行下單
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+export default function App() {
+  const [currentView, setCurrentView] = useState<AppView>('macro');
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [loadingOps, setLoadingOps] = useState(false);
+  const [executingId, setExecutingId] = useState<string | null>(null);
+  const [nextRefresh, setNextRefresh] = useState(60); // 1分鐘倒數(秒)
+  const [autoTradedSymbols, setAutoTradedSymbols] = useState<Set<string>>(new Set());
+  // --- 智能解析網址參數 (初始化階段) ---
+  const params = new URLSearchParams(window.location.search);
+  const urlBackend = params.get('backend');
+  const urlPin = params.get('pin');
+  const THE_PIN = "8888"; 
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (urlPin === THE_PIN) {
+      localStorage.setItem('isAuth', 'true');
+      return true;
+    }
+    return localStorage.getItem('isAuth') === 'true';
+  });
+
+  const [pin, setPin] = useState(urlPin || '');
+  const [customApiUrl, setCustomApiUrl] = useState(() => {
+    if (urlBackend) {
+      localStorage.setItem('customApiUrl', urlBackend);
+      return urlBackend;
+    }
+    return localStorage.getItem('customApiUrl') || '';
+  });
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showApiSettings, setShowApiSettings] = useState(false);
+  const [verifiedPrices, setVerifiedPrices] = useState<Record<string, boolean>>({});
+  const [isBackendConnected, setIsBackendConnected] = useState(false);
+  const [detailedError, setDetailedError] = useState<string | null>(null);
+
+  // 清除網址上的參數，保護隱私
+  useEffect(() => {
+    if (urlBackend || urlPin) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const fetchOps = async () => {
+    // 1. 【核心掃描】提升頻率至 1 分鐘，並精確比對品種執行應急平倉
+    try {
+      const historyRes = await fetch('/trade_history.json?t=' + Date.now());
+      const history = await historyRes.json();
+      const openPositions = history.filter((h: any) => h.status === 'OPEN');
+
+      const categories = ['外匯市場分析', '全球宏觀趨勢'];
+      for (const cat of categories) {
+        const marketData = await getGlobalOpportunities(cat);
+        for (const op of marketData) {
+          const mt5Symbol = MT5_SYMBOL_MAP[op.symbol] || op.symbol.replace('/', '');
+          
+          // --- A. 精確比對反向訊號 ---
+          const currentPos = openPositions.find((p: any) => {
+            const pSym = p.symbol.toUpperCase().replace('/', '');
+            const opSym = op.symbol.toUpperCase().replace('/', '');
+            return pSym === opSym || p.symbol === op.symbol;
+          });
+
+          if (currentPos && op.confidence > 80 && currentPos.action !== op.action) {
+            console.log(`🚨 [EMERGENCY REVERSAL] 偵測到反向訊號 (${op.confidence}%): ${op.symbol}. 執行平倉!`);
+            const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
+            fetch(`${API_BASE}/api/close-trade`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': THE_PIN },
+              body: JSON.stringify({ symbol: op.symbol, mt5_symbol: mt5Symbol })
+            });
+          }
+
+          // --- B. 正常的自動下單邏輯 (排除 JPY 與 US30) ---
+          const isBlocked = op.symbol.toUpperCase().includes('JPY') || op.symbol.toUpperCase().includes('US30');
+          if (op.confidence > 85 && !autoTradedSymbols.has(op.symbol) && !isBlocked && !currentPos) {
+            console.log(`[AUTO-PILOT] 背景捕獲高信心訊號 (${op.confidence}%): ${op.symbol}`);
+            setAutoTradedSymbols(prev => new Set(prev).add(op.symbol));
+            handleExecuteTrade(op, true);
+          } else if (isBlocked && op.confidence > 85) {
+            console.log(`[OBSERVE-ONLY] ${op.symbol} 僅供觀測，已跳過自動下單`);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('背景市場掃描或平倉邏輯失敗', e);
+    }
+
+    if (['macro', 'forex', 'stock', 'crypto'].includes(currentView)) {
+      setLoadingOps(true);
+      const category = SIDEBAR_ITEMS.find(i => i.id === currentView)?.name || '全球宏觀趨勢';
+      const data = await getGlobalOpportunities(category);
+      
+      // --- 加強：從 MT5 抓取真實價格進行覆蓋 ---
+      try {
+        const mt5Symbols = data.map(op => MT5_SYMBOL_MAP[op.symbol] || op.symbol.replace('/', ''));
+        const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
+        const priceRes = await fetch(`${API_BASE}/api/prices?symbols=${encodeURIComponent(mt5Symbols.join(','))}&_t=${Date.now()}`, {
+          headers: { 'Authorization': THE_PIN }
+        });
+        
+        const allPrices = await priceRes.json();
+        
+        if (!priceRes.ok) {
+          throw new Error(allPrices.error || `Server returned ${priceRes.status}`);
+        }
+
+        const newVerified: Record<string, boolean> = {};
+
+        data.forEach(op => {
+          const sym = op.symbol.toUpperCase().replace('/', '');
+          // 搜尋最匹配的 key
+          let bestMatch = null;
+          if (allPrices[sym]) bestMatch = allPrices[sym];
+          else if (allPrices[op.symbol.toUpperCase()]) bestMatch = allPrices[op.symbol.toUpperCase()];
+          else {
+            // 模糊搜尋 (處理 XAUUSD.pro 等情況)
+            const key = Object.keys(allPrices).find(k => k.includes(sym) || sym.includes(k));
+            if (key) bestMatch = allPrices[key];
+          }
+
+          if (bestMatch && bestMatch.last > 0) {
+            op.entryPrice = bestMatch.last;
+            newVerified[op.symbol] = true;
+          }
+        });
+        setVerifiedPrices(newVerified);
+        setIsBackendConnected(true);
+        setDetailedError(null);
+      } catch (err: any) {
+        console.error('Price Sync Error (Continuing with AI prices):', err);
+        // 價格同步失敗沒關係，我們繼續顯示 AI 數據並執行邏輯
+      }
+
+      setOpportunities(data);
+      setLoadingOps(false);
+      setNextRefresh(60); 
+    }
+  };
+
+  // 1. 切換分頁時立即掃描
+  useEffect(() => {
+    fetchOps();
+  }, [currentView]);
+
+  // 2. 15 分鐘定時刷新邏輯
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNextRefresh(prev => {
+        if (prev <= 1) {
+          fetchOps(); // 時間到，執行掃描
+          return 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [currentView]);
+
+  const handleExecuteTrade = async (op: Opportunity, isAuto = false) => {
+    if (op.symbol.toUpperCase().includes('US30')) {
+      alert('【觀測模式】US30 目前僅供數據觀測，自動/手動下單功能已暫時禁用。');
+      return;
+    }
+    if (!isAuto && !window.confirm(`確定要針對 ${op.symbol} 執行 AI 自動下單 (MT5) 嗎？`)) return;
+    
+    const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
+    setExecutingId(op.symbol);
+    try {
+      console.log(`🚀 [EXECUTE] Sending trade to: ${API_BASE}`);
+      const yfSymbol = YF_SYMBOL_MAP[op.symbol] || op.symbol;
+      const mt5Symbol = MT5_SYMBOL_MAP[op.symbol] || op.symbol.replace('/', '');
+      
+      const res = await fetch(`${API_BASE}/api/execute-trade`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': THE_PIN 
+        },
+        body: JSON.stringify({ symbol: yfSymbol, mt5_symbol: mt5Symbol, signal: op }),
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || `Server Error ${res.status}`);
+      }
+
+      if (!isAuto) alert('✅ 指令送出成功！請查看 MT5。');
+    } catch (error: any) {
+      console.error('Trade execution error:', error);
+      if (!isAuto) {
+        alert(`❌ 下單失敗！\n原因：${error.message}\n\n💡 小提醒：如果您是遠端訪問，請確認「進階連線設定」中的「後端網址」是否已填入正確的 Cloudflare 網址。`);
+      }
+    } finally {
+      setExecutingId(null);
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#0b0b14] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-[#0f0f1a] p-8 rounded-3xl border border-gray-800 shadow-2xl max-w-sm w-full text-center space-y-6"
+        >
+          <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-blue-900/40">
+            <Lock className="text-white" size={32} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Access Denied</h2>
+            <p className="text-gray-500 text-sm mt-2">請輸入 4 位數交易授權碼</p>
+          </div>
+          <input 
+            type="password" 
+            value={pin}
+            onChange={(e) => {
+              setPin(e.target.value);
+              if (e.target.value === THE_PIN) {
+                localStorage.setItem('isAuth', 'true');
+                setIsAuthenticated(true);
+              }
+            }}
+            placeholder="PIN CODE"
+            className="w-full bg-black/40 border border-gray-800 rounded-xl py-4 text-center text-2xl tracking-[1em] font-mono text-blue-400 focus:border-blue-500 outline-none transition-all"
+          />
+          <p className="text-[10px] text-gray-600">本系統僅限授權設備訪問，請確保連線安全。</p>
+          
+          <div className="pt-4 border-t border-gray-800">
+            <button 
+              onClick={() => setShowApiSettings(!showApiSettings)}
+              className="text-xs text-gray-500 hover:text-blue-400 transition-colors"
+            >
+              {showApiSettings ? '收起連線設定' : '進階連線設定 (Ngrok)'}
+            </button>
+            
+            {showApiSettings && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mt-4 space-y-3">
+                <div className="text-[10px] text-left text-gray-500">指令中心網址 (Server URL):</div>
+                <input 
+                  type="text" 
+                  value={customApiUrl}
+                  onChange={(e) => {
+                    let val = e.target.value.trim();
+                    // 自動修正網址
+                    if (val && !val.startsWith('http')) val = 'https://' + val;
+                    if (val.endsWith('/')) val = val.slice(0, -1);
+                    
+                    setCustomApiUrl(val);
+                    localStorage.setItem('customApiUrl', val);
+                  }}
+                  placeholder="https://xxxx.trycloudflare.com"
+                  className="w-full bg-black border border-gray-800 rounded-lg p-2 text-xs text-gray-300 font-mono"
+                />
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen bg-[#0b0b14] text-gray-200 font-sans selection:bg-blue-500/30 overflow-x-hidden">
+      
+      {/* --- Mobile Sidebar Overlay --- */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* --- Sidebar --- */}
+      <aside className={cn(
+        "w-64 bg-[#0f0f1a] border-r border-gray-800 flex flex-col fixed lg:sticky top-0 h-screen z-50 transition-transform duration-300",
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
+        <div className="p-6 flex items-center justify-between lg:justify-start gap-3">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-900/40">
+              <Globe className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-xl font-black text-white tracking-tighter uppercase">GlobalInvest <span className="text-blue-500">AI</span></h1>
+          </div>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2 text-gray-500">
+            <X size={20} />
+          </button>
+        </div>
+
+        <nav className="flex-1 px-4 py-6 space-y-2">
+          {SIDEBAR_ITEMS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setCurrentView(item.id as AppView);
+                setIsMobileMenuOpen(false);
+              }}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all",
+                currentView === item.id 
+                  ? "bg-blue-600 text-white shadow-xl shadow-blue-900/20" 
+                  : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
+              )}
+            >
+              <item.icon size={18} />
+              {item.name}
+            </button>
+          ))}
+          <div className="pt-8 pb-4">
+            <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest px-4 mb-2">System</div>
+            <button
+              onClick={() => {
+                setCurrentView('dashboard');
+                setIsMobileMenuOpen(false);
+              }}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all",
+                currentView === 'dashboard' 
+                  ? "bg-purple-600 text-white shadow-xl shadow-purple-900/20" 
+                  : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
+              )}
+            >
+              <Activity size={18} />
+              績效看板 (MT5 History)
+            </button>
+          </div>
+        </nav>
+
+        <div className="p-6 border-t border-gray-800">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            Gemini 2.5 Flash 在線
+          </div>
+        </div>
+      </aside>
+
+        {/* --- Main Content --- */}
+        <main className="flex-1 overflow-y-auto bg-gradient-to-b from-[#0b0b14] to-[#0f0f1a]">
+          
+          {/* Mobile Header Toggle */}
+          <div className="lg:hidden flex items-center justify-between p-4 bg-[#0f0f1a] border-b border-gray-800">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-gray-800 rounded-lg text-white">
+              <Menu size={20} />
+            </button>
+            <h1 className="text-sm font-black text-white uppercase tracking-tighter">GlobalInvest <span className="text-blue-500">AI</span></h1>
+            <div className="w-10"></div> {/* Spacer */}
+          </div>
+
+          {currentView === 'dashboard' ? (
+          <TradeDashboard 
+            apiUrl={customApiUrl || `http://${window.location.hostname}:3001`} 
+            authPin={THE_PIN}
+          />
+        ) : (
+          <div className="max-w-6xl mx-auto p-8 space-y-8">
+            
+            {/* Header Banner */}
+            <header className="relative bg-gradient-to-br from-blue-600 to-indigo-900 rounded-2xl lg:rounded-3xl p-6 lg:p-8 overflow-hidden shadow-2xl border border-white/10">
+              <div className="relative z-10 space-y-4">
+                <div className="flex items-center gap-2 bg-white/10 w-fit px-3 py-1 rounded-full text-[10px] lg:text-xs font-bold text-blue-100 border border-white/10 backdrop-blur-md">
+                  <BarChart3 size={12} /> 全球宏觀趨勢深度掃描完成
+                </div>
+                <h2 className="text-xl lg:text-3xl font-black text-white leading-tight">
+                  基於「三重過濾」量化策略，<br className="hidden lg:block" />
+                  系統精選 4H 趨勢共振與機構訂單流機會。
+                </h2>
+                <p className="text-blue-100/70 text-sm max-w-2xl leading-relaxed">
+                  所有標的皆已通過多時區 (MTF) 趨勢驗證，並結合 Smart Money Concepts (SMC) 與美元指數相關性，執行 24/7 自動利潤鎖定與防禦性止損。
+                </p>
+              </div>
+              <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-white/10 to-transparent pointer-events-none" />
+              <div className="absolute -right-20 -top-20 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl" />
+            </header>
+
+            {/* Signal Grid Section */}
+            <section className="space-y-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <h3 className="text-lg lg:text-xl font-black text-white flex items-center gap-2">
+                  <Zap className="text-yellow-400" /> 高勝率訊號 (MTF + SMC + DXY)
+                </h3>
+                <div className="flex items-center justify-between lg:justify-end gap-4">
+                  {/* Connection Status Badge */}
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold border",
+                    isBackendConnected 
+                      ? "bg-green-500/10 text-green-400 border-green-500/20" 
+                      : "bg-red-500/10 text-red-400 border-red-500/20 animate-pulse"
+                  )}>
+                    <div className={cn("w-1.5 h-1.5 rounded-full", isBackendConnected ? "bg-green-500" : "bg-red-500")} />
+                    {isBackendConnected ? "MT5 BRIDGE CONNECTED" : "MT5 DISCONNECTED (Using AI Estimates)"}
+                  </div>
+                  
+                  <button 
+                    onClick={() => {
+                      localStorage.clear();
+                      window.location.reload();
+                    }}
+                    className="text-[9px] text-gray-500 hover:text-red-400 transition-colors"
+                  >
+                    重設所有設定
+                  </button>
+
+                  <div className="text-[9px] lg:text-[10px] bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20 font-bold">
+                    下次自動巡邏: {Math.floor(nextRefresh / 60)}:{String(nextRefresh % 60).padStart(2, '0')}
+                  </div>
+                  <button 
+                    onClick={() => fetchOps()}
+                    className="p-2 hover:bg-white/5 rounded-full transition-colors text-gray-500 hover:text-white"
+                  >
+                    <RefreshCcw size={20} className={loadingOps ? 'animate-spin' : ''} />
+                  </button>
+                  </div>
+                </div>
+                
+                {detailedError && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-[10px] text-red-400 font-mono">
+                    ERROR: {detailedError}
+                    <br />
+                    <span className="text-gray-500 text-[8px]">TIP: 請確認網址包含 https:// 且沒有多餘斜線</span>
+                  </div>
+                )}
+
+                {/* Debug Info: 顯示目前連線的後端網址 */}
+              <div className="bg-black/20 border border-gray-800/30 rounded-lg p-2 flex items-center justify-between">
+                <div className="text-[9px] text-gray-500 uppercase font-bold">目前指令中心連線 (Backend URL):</div>
+                <div className="text-[10px] text-blue-400 font-mono">
+                  {customApiUrl || `http://${window.location.hostname}:3001`}
+                </div>
+              </div>
+
+              {loadingOps ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-96 bg-white/5 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {opportunities.map((op, idx) => (
+                    <SignalCard 
+                      key={idx} 
+                      opportunity={op} 
+                      onExecute={handleExecuteTrade} 
+                      executing={executingId === op.symbol}
+                      verified={verifiedPrices[op.symbol]}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Disclaimer */}
+            <footer className="pt-12 pb-6 border-t border-gray-800/50">
+              <div className="flex items-start gap-3 bg-red-500/5 border border-red-500/10 p-4 rounded-2xl">
+                <Info size={16} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  免責聲明：GlobalInvest AI 提供的所有數據與建議皆基於量化模型分析，僅供學習與研究參考。金融交易涉及高風險，過往表現不代表未來收益。使用者應自行評估財務狀況並承擔所有交易風險。
+                </p>
+              </div>
+            </footer>
+
+          </div>
+        )}
       </main>
+      {/* AI 聊天助手 */}
+      <ChatAssistant 
+        apiUrl={customApiUrl || `http://${window.location.hostname}:3001`} 
+        authPin={THE_PIN} 
+      />
     </div>
   );
 }
