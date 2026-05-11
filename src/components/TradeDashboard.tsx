@@ -97,7 +97,7 @@ export const TradeDashboard: React.FC<{ apiUrl?: string; authPin?: string }> = (
   // --- 項目分析邏輯 (Asset Analysis) ---
   const assetStats = trades.reduce((acc: any, trade) => {
     if (trade.status !== 'CLOSED') return acc;
-    const sym = trade.symbol;
+    const sym = trade.symbol.replace('/', '').toUpperCase();
     if (!acc[sym]) acc[sym] = { symbol: sym, profit: 0, count: 0, wins: 0, losses: 0 };
     acc[sym].profit += trade.profit || 0;
     acc[sym].count += 1;
