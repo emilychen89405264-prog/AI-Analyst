@@ -102,7 +102,7 @@ async function handleChatLogic(text: string): Promise<string> {
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning']
 }));
 app.use(express.json());
 
@@ -303,6 +303,26 @@ app.post('/api/analyze', (req, res) => {
   const cacheKey = `${symbol}-${timeframe}`;
   analysisCache[cacheKey] = { data, time: Date.now() };
   console.log(`📡 [SYNC] Shared analysis for ${cacheKey} updated.`);
+  res.json({ success: true });
+});
+
+let globalOpsCache: Record<string, { data: any, time: number }> = {};
+
+app.get('/api/global-ops', (req, res) => {
+  const { category } = req.query;
+  const cacheKey = String(category);
+  // 5 minutes cache
+  if (globalOpsCache[cacheKey] && (Date.now() - globalOpsCache[cacheKey].time < 300000)) {
+    return res.json({ data: globalOpsCache[cacheKey].data });
+  }
+  res.json({ needs_refresh: true });
+});
+
+app.post('/api/global-ops', (req, res) => {
+  const { category, data } = req.body;
+  const cacheKey = String(category);
+  globalOpsCache[cacheKey] = { data, time: Date.now() };
+  console.log(`📡 [SYNC] Shared global ops for ${cacheKey} updated.`);
   res.json({ success: true });
 });
 

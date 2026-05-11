@@ -296,6 +296,20 @@ export async function getGlobalOpportunities(category: string): Promise<Opportun
 `;
 
   try {
+    const API_BASE = localStorage.getItem('customApiUrl') || `http://${window.location.hostname}:3001`;
+    try {
+      const res = await fetch(`${API_BASE}/api/global-ops?category=${encodeURIComponent(category)}`, {
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+      const serverData = await res.json();
+      if (serverData && !serverData.needs_refresh && Array.isArray(serverData.data)) {
+        console.log('✅ [SYNC] Using synchronized global ops from server.');
+        return serverData.data;
+      }
+    } catch (e) {
+      console.warn("Failed to fetch shared global ops cache:", e);
+    }
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -326,10 +340,24 @@ export async function getGlobalOpportunities(category: string): Promise<Opportun
     }) as any;
     
     const data = JSON.parse(response.text || '[]');
-    return data.map((item: any) => ({
+    const finalData = data.map((item: any) => ({
       ...item,
       entryPrice: item.entry_price // 統一欄位名稱
     }));
+
+    try {
+      const API_BASE = localStorage.getItem('customApiUrl') || `http://${window.location.hostname}:3001`;
+      fetch(`${API_BASE}/api/global-ops`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({ category, data: finalData })
+      });
+    } catch (e) {}
+
+    return finalData;
   } catch (error) {
     console.error('Error fetching opportunities:', error);
     return [];
