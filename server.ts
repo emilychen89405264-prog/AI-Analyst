@@ -128,6 +128,8 @@ const authMiddleware = (req: any, res: any, next: any) => {
   next();
 };
 
+const tradeLocks = new Set<string>();
+
 app.post('/api/execute-trade', authMiddleware, (req, res) => {
   const { symbol, mt5_symbol, signal } = req.body;
   
@@ -135,6 +137,26 @@ app.post('/api/execute-trade', authMiddleware, (req, res) => {
     return res.status(400).json({ error: 'Missing symbol' });
   }
 
+  // 1. Memory lock check
+  if (tradeLocks.has(symbol)) {
+    console.warn(`[DUPLICATE PROTECT] ${symbol} is currently executing.`);
+    return res.status(400).json({ error: 'Trade is already executing for this symbol' });
+  }
+
+  // 2. File history check
+  try {
+    const historyPath = path.join(__dirname, 'public', 'trade_history.json');
+    if (fs.existsSync(historyPath)) {
+      const history = JSON.parse(fs.readFileSync(historyPath, 'utf-8'));
+      const hasOpen = history.find((h: any) => h.status === 'OPEN' && (h.symbol === symbol || h.symbol.replace('/', '') === symbol));
+      if (hasOpen) {
+         console.warn(`[DUPLICATE PROTECT] ${symbol} already has an open position.`);
+         return res.status(400).json({ error: 'Trade rejected: Symbol already has an open position' });
+      }
+    }
+  } catch (e) {}
+
+  tradeLocks.add(symbol);
   console.log(`Executing trade for ${symbol}...`);
   
   // 使用 spawn 而非 exec 以避免 Windows Shell 轉義問題 (如 | & 等符號)
@@ -164,6 +186,7 @@ app.post('/api/execute-trade', authMiddleware, (req, res) => {
   });
 
   py.on('close', (code) => {
+    tradeLocks.delete(symbol);
     console.log(`Python trade process exited with code ${code}`);
     if (res.headersSent) return; // 避免重複發送 response
     

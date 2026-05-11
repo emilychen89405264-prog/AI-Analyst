@@ -169,11 +169,13 @@ def execute_mt5_trade(signal):
     price = mt5.symbol_info_tick(symbol_mt5).ask if signal["action"] == "BUY" else mt5.symbol_info_tick(symbol_mt5).bid
     
     point = info.point
-    sl_points = int(signal["sl_pct"] * 100 / point)
-    tp_points = int(signal["tp_pct"] * 100 / point)
     
-    sl = price - sl_points * point if signal["action"] == "BUY" else price + sl_points * point
-    tp = price + tp_points * point if signal["action"] == "BUY" else price - tp_points * point
+    # 計算基於百分比的價格距離
+    sl_dist = price * (signal["sl_pct"] / 100.0)
+    tp_dist = price * (signal["tp_pct"] / 100.0)
+    
+    sl = price - sl_dist if signal["action"] == "BUY" else price + sl_dist
+    tp = price + tp_dist if signal["action"] == "BUY" else price - tp_dist
 
     filling_type = mt5.ORDER_FILLING_FOK
     if (info.filling_mode & 2): filling_type = mt5.ORDER_FILLING_IOC
