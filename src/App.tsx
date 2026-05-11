@@ -230,7 +230,7 @@ export default function App() {
             return pSym === opSym || p.symbol === op.symbol;
           });
 
-          if (currentPos && op.confidence > 80 && currentPos.action !== op.action) {
+          if (currentPos && op.confidence > 90 && currentPos.action !== op.action) {
             console.log(`🚨 [EMERGENCY REVERSAL] 偵測到反向訊號 (${op.confidence}%): ${op.symbol}. 執行平倉!`);
             const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
             fetch(`${API_BASE}/api/close-position`, {
