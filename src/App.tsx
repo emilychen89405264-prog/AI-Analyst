@@ -233,7 +233,7 @@ export default function App() {
           if (currentPos && op.confidence > 80 && currentPos.action !== op.action) {
             console.log(`🚨 [EMERGENCY REVERSAL] 偵測到反向訊號 (${op.confidence}%): ${op.symbol}. 執行平倉!`);
             const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
-            fetch(`${API_BASE}/api/close-trade`, {
+            fetch(`${API_BASE}/api/close-position`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json', 

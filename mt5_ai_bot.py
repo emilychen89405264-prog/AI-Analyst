@@ -47,6 +47,11 @@ def close_mt5_position(symbol_input):
         type_close = mt5.ORDER_TYPE_SELL if pos.type == mt5.POSITION_TYPE_BUY else mt5.ORDER_TYPE_BUY
         price = tick.bid if pos.type == mt5.POSITION_TYPE_BUY else tick.ask
 
+        filling_type = mt5.ORDER_FILLING_FOK
+        if (info.filling_mode & 2): filling_type = mt5.ORDER_FILLING_IOC
+        elif (info.filling_mode & 1): filling_type = mt5.ORDER_FILLING_FOK
+        else: filling_type = mt5.ORDER_FILLING_RETURN
+
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "position": pos.ticket,
@@ -58,7 +63,7 @@ def close_mt5_position(symbol_input):
             "magic": 20260503,
             "comment": "AI Manual Exit",
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
+            "type_filling": filling_type,
         }
         
         result = mt5.order_send(request)
@@ -134,7 +139,6 @@ def update_trade_profits():
                 current_price = pos.price_current
                 total_dist = abs(tp - entry)
                 moved_dist = abs(current_price - entry)
-                
                 is_profit = (current_price > entry) if r["action"] == "BUY" else (current_price < entry)
                 if is_profit and total_dist > 0 and (moved_dist >= (total_dist * 0.3)):
                     if r.get("be_active") != True:
@@ -171,6 +175,11 @@ def execute_mt5_trade(signal):
     sl = price - sl_points * point if signal["action"] == "BUY" else price + sl_points * point
     tp = price + tp_points * point if signal["action"] == "BUY" else price - tp_points * point
 
+    filling_type = mt5.ORDER_FILLING_FOK
+    if (info.filling_mode & 2): filling_type = mt5.ORDER_FILLING_IOC
+    elif (info.filling_mode & 1): filling_type = mt5.ORDER_FILLING_FOK
+    else: filling_type = mt5.ORDER_FILLING_RETURN
+
     request = {
         "action": mt5.TRADE_ACTION_DEAL,
         "symbol": symbol_mt5,
@@ -182,7 +191,7 @@ def execute_mt5_trade(signal):
         "magic": 20260503,
         "comment": "GlobalInvest AI",
         "type_time": mt5.ORDER_TIME_GTC,
-        "type_filling": mt5.ORDER_FILLING_IOC,
+        "type_filling": filling_type,
     }
     
     result = mt5.order_send(request)
