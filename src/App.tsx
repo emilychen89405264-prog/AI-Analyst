@@ -210,9 +210,12 @@ export default function App() {
   const fetchOps = async () => {
     // 1. 【核心掃描】提升頻率至 1 分鐘，並精確比對品種執行應急平倉
     try {
-      const historyRes = await fetch('/trade_history.json?t=' + Date.now());
+      const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
+      const historyRes = await fetch(`${API_BASE}/api/trade-history?t=` + Date.now(), {
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
       const history = await historyRes.json();
-      const openPositions = history.filter((h: any) => h.status === 'OPEN');
+      const openPositions = Array.isArray(history) ? history.filter((h: any) => h.status === 'OPEN') : [];
 
       const categories = ['外匯市場分析', '全球宏觀趨勢'];
       for (const cat of categories) {

@@ -138,7 +138,7 @@ app.post('/api/execute-trade', authMiddleware, (req, res) => {
   console.log(`Executing trade for ${symbol}...`);
   
   // 使用 spawn 而非 exec 以避免 Windows Shell 轉義問題 (如 | & 等符號)
-  const args = ['mt5_ai_bot.py', '--symbol', symbol];
+  const args = ['mt5_ai_bot.py', '--action', 'TRADE', '--symbol', symbol];
   if (mt5_symbol) {
     args.push('--mt5_symbol', mt5_symbol);
   }
