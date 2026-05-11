@@ -290,8 +290,8 @@ export async function getGlobalOpportunities(category: string): Promise<Opportun
 6. timeframe: '1H (4H Confirmed)'
 7. winRate: 預估勝率
 8. status: '結清' 或 '持倉'
-9. tp_pct: 止盈比例 (外匯 0.15-0.35%；黃金 0.3-0.8%)
-10. sl_pct: 止損比例 (外匯 0.1-0.18%；黃金 0.15-0.4%)
+9. tp_pct: 止盈比例 (外匯 0.15-0.35%；黃金 0.75-1.1%)
+10. sl_pct: 止損比例 (外匯 0.1-0.18%；黃金 0.35-0.5%)
 11. entry_price: 目前參考進場價格 (數字型態)
 `;
 
