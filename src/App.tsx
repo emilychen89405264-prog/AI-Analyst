@@ -439,58 +439,97 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0b14] text-gray-200 font-sans selection:bg-blue-500/30 overflow-x-hidden flex flex-col">
+    <div className="flex min-h-screen bg-[#0b0b14] text-gray-200 font-sans selection:bg-blue-500/30 overflow-x-hidden">
       
-      {/* Top Navigation Bar */}
-      <nav className="sticky top-0 z-40 bg-[#0f0f1a]/80 backdrop-blur-xl border-b border-gray-800 px-4 lg:px-8 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-900/40">
-            <Globe className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-lg font-black text-white tracking-tighter uppercase hidden sm:block">
-            GlobalInvest <span className="text-blue-500">AI</span>
-          </h1>
-        </div>
+      {/* --- Mobile Sidebar Overlay --- */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
 
-        <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-gray-800">
-          {SIDEBAR_ITEMS.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setCurrentView(item.id as AppView)}
-              className={cn(
-                "px-3 lg:px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2",
-                currentView === item.id 
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-900/30" 
-                  : "text-gray-400 hover:text-gray-200"
-              )}
-            >
-              <item.icon size={14} />
-              <span className={cn(currentView === item.id ? "block" : "hidden md:block")}>{item.name}</span>
-            </button>
-          ))}
-          <div className="w-px h-4 bg-gray-800 mx-1" />
-          <button
-            onClick={() => setCurrentView('dashboard')}
-            className={cn(
-              "px-3 lg:px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2",
-              currentView === 'dashboard' 
-                ? "bg-purple-600 text-white shadow-lg shadow-purple-900/30" 
-                : "text-gray-400 hover:text-gray-200"
-            )}
-          >
-            <Activity size={14} />
-            <span className={cn(currentView === 'dashboard' ? "block" : "hidden md:block")}>績效看板</span>
+      {/* --- Sidebar --- */}
+      <aside className={cn(
+        "w-64 bg-[#0f0f1a] border-r border-gray-800 flex flex-col fixed lg:sticky top-0 h-screen z-50 transition-transform duration-300",
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
+        <div className="p-6 flex items-center justify-between lg:justify-start gap-3">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-900/40">
+              <Globe className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-xl font-black text-white tracking-tighter uppercase">GlobalInvest <span className="text-blue-500">AI</span></h1>
+          </div>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2 text-gray-500">
+            <X size={20} />
           </button>
         </div>
 
-        <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-          <span className="hidden lg:inline uppercase">Gemini AI Active</span>
+        <nav className="flex-1 px-4 py-6 space-y-2">
+          {SIDEBAR_ITEMS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setCurrentView(item.id as AppView);
+                setIsMobileMenuOpen(false);
+              }}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all",
+                currentView === item.id 
+                  ? "bg-blue-600 text-white shadow-xl shadow-blue-900/20" 
+                  : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
+              )}
+            >
+              <item.icon size={18} />
+              {item.name}
+            </button>
+          ))}
+          <div className="pt-8 pb-4">
+            <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest px-4 mb-2">System</div>
+            <button
+              onClick={() => {
+                setCurrentView('dashboard');
+                setIsMobileMenuOpen(false);
+              }}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all",
+                currentView === 'dashboard' 
+                  ? "bg-purple-600 text-white shadow-xl shadow-purple-900/20" 
+                  : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
+              )}
+            >
+              <Activity size={18} />
+              績效看板 (MT5 History)
+            </button>
+          </div>
+        </nav>
+
+        <div className="p-6 border-t border-gray-800">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            Gemini 2.5 Flash 在線
+          </div>
         </div>
-      </nav>
+      </aside>
 
       {/* --- Main Content --- */}
       <main className="flex-1 overflow-y-auto bg-gradient-to-b from-[#0b0b14] to-[#0f0f1a]">
+        
+        {/* Mobile Header Toggle */}
+        <div className="lg:hidden flex items-center justify-between p-4 bg-[#0f0f1a] border-b border-gray-800">
+          <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-gray-800 rounded-lg text-white">
+            <Menu size={20} />
+          </button>
+          <h1 className="text-sm font-black text-white uppercase tracking-tighter">GlobalInvest <span className="text-blue-500">AI</span></h1>
+          <div className="w-10"></div> {/* Spacer */}
+        </div>
+
         {currentView === 'dashboard' ? (
           <TradeDashboard 
             apiUrl={customApiUrl || `http://${window.location.hostname}:3001`} 
