@@ -219,17 +219,18 @@ export default function App() {
       for (const cat of categories) {
         const marketData = await getGlobalOpportunities(cat);
         for (const op of marketData) {
-          const mt5Symbol = MT5_SYMBOL_MAP[op.symbol] || op.symbol.replace('/', '');
+          const rawSym = op.symbol;
+          const cleanSym = rawSym.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const mt5Symbol = MT5_SYMBOL_MAP[cleanSym] || MT5_SYMBOL_MAP[rawSym] || cleanSym;
           
           // --- A. 精確比對反向訊號 ---
           const currentPos = openPositions.find((p: any) => {
-            const pSym = p.symbol.toUpperCase().replace('/', '');
-            const opSym = op.symbol.toUpperCase().replace('/', '');
-            return pSym === opSym || p.symbol === op.symbol;
+            const pSym = p.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            return pSym === cleanSym;
           });
 
           if (currentPos && op.confidence > 90 && currentPos.action !== op.action) {
-            console.log(`🚨 [EMERGENCY REVERSAL] 偵測到反向訊號 (${op.confidence}%): ${op.symbol}. 執行平倉!`);
+            console.log(`🚨 [EMERGENCY REVERSAL] 偵測到反向訊號 (${op.confidence}%): ${cleanSym}. 執行平倉!`);
             const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
             fetch(`${API_BASE}/api/close-position`, {
               method: 'POST',
@@ -238,21 +239,20 @@ export default function App() {
                 'Authorization': THE_PIN,
                 'ngrok-skip-browser-warning': 'true'
               },
-              body: JSON.stringify({ symbol: op.symbol, mt5_symbol: mt5Symbol })
+              body: JSON.stringify({ symbol: rawSym, mt5_symbol: mt5Symbol })
             });
           }
 
           // --- B. 嚴格自動下單白名單 (僅限 XAUUSD, GBPUSD, GBPJPY) ---
           const allowedSymbols = ['XAUUSD', 'GBPUSD', 'GBPJPY'];
-          const normalizedSym = op.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
-          const isAllowed = allowedSymbols.some(s => normalizedSym.includes(s));
+          const isAllowed = allowedSymbols.some(s => cleanSym.includes(s));
           
           if (op.confidence > 85 && isAllowed && !currentPos) {
             // 只有當「方向不同」或者是「尚未交易過」時才允許下單
-            const lastAction = autoTradedActions[op.symbol];
+            const lastAction = autoTradedActions[cleanSym];
             if (lastAction !== op.action) {
-              console.log(`[AUTO-PILOT] 背景捕獲高信心訊號 (${op.confidence}%): ${op.symbol} - 方向: ${op.action}`);
-              setAutoTradedActions(prev => ({ ...prev, [op.symbol]: op.action }));
+              console.log(`[AUTO-PILOT] 背景捕獲高信心訊號 (${op.confidence}%): ${cleanSym} - 方向: ${op.action}`);
+              setAutoTradedActions(prev => ({ ...prev, [cleanSym]: op.action }));
               handleExecuteTrade(op, true);
             }
           } else if (isBlocked && op.confidence > 85) {
@@ -338,8 +338,15 @@ export default function App() {
     return () => clearInterval(timer);
   }, [currentView]);
 
-  const handleExecuteTrade = async (op: Opportunity, isAuto = false) => {
-    if (op.symbol.toUpperCase().includes('US30')) {
+    const normalizeSymbol = (s: string) => {
+      return s.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    };
+
+    const handleExecuteTrade = async (op: Opportunity, isAuto = false) => {
+    const rawSym = op.symbol;
+    const cleanSym = normalizeSymbol(rawSym);
+
+    if (cleanSym.includes('US30')) {
       alert('【觀測模式】US30 目前僅供數據觀測，自動/手動下單功能已暫時禁用。');
       return;
     }
@@ -349,8 +356,9 @@ export default function App() {
     setExecutingId(op.symbol);
     try {
       console.log(`🚀 [EXECUTE] Sending trade to: ${API_BASE}`);
-      const yfSymbol = YF_SYMBOL_MAP[op.symbol] || op.symbol;
-      const mt5Symbol = MT5_SYMBOL_MAP[op.symbol] || op.symbol.replace('/', '');
+      
+      // 優先從 MAP 找，找不到就用去雜質後的名稱
+      const mt5Symbol = MT5_SYMBOL_MAP[cleanSym] || MT5_SYMBOL_MAP[rawSym] || cleanSym;
       
       const res = await fetch(`${API_BASE}/api/execute-trade`, {
         method: 'POST',
