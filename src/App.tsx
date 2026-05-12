@@ -165,7 +165,7 @@ export default function App() {
   const [loadingOps, setLoadingOps] = useState(false);
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [nextRefresh, setNextRefresh] = useState(60); // 1分鐘倒數(秒)
-  const [autoTradedSymbols, setAutoTradedSymbols] = useState<Set<string>>(new Set());
+  const [autoTradedActions, setAutoTradedActions] = useState<Record<string, string>>({});
   // --- 智能解析網址參數 (初始化階段) ---
   const params = new URLSearchParams(window.location.search);
   const urlBackend = params.get('backend');
@@ -247,10 +247,14 @@ export default function App() {
           const normalizedSym = op.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
           const isAllowed = allowedSymbols.some(s => normalizedSym.includes(s));
           
-          if (op.confidence > 85 && !autoTradedSymbols.has(op.symbol) && isAllowed && !currentPos) {
-            console.log(`[AUTO-PILOT] 背景捕獲高信心訊號 (${op.confidence}%): ${op.symbol}`);
-            setAutoTradedSymbols(prev => new Set(prev).add(op.symbol));
-            handleExecuteTrade(op, true);
+          if (op.confidence > 85 && isAllowed && !currentPos) {
+            // 只有當「方向不同」或者是「尚未交易過」時才允許下單
+            const lastAction = autoTradedActions[op.symbol];
+            if (lastAction !== op.action) {
+              console.log(`[AUTO-PILOT] 背景捕獲高信心訊號 (${op.confidence}%): ${op.symbol} - 方向: ${op.action}`);
+              setAutoTradedActions(prev => ({ ...prev, [op.symbol]: op.action }));
+              handleExecuteTrade(op, true);
+            }
           } else if (isBlocked && op.confidence > 85) {
             console.log(`[OBSERVE-ONLY] ${op.symbol} 僅供觀測，已跳過自動下單`);
           }
