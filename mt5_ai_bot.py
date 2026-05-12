@@ -140,7 +140,7 @@ def update_trade_profits():
                 total_dist = abs(tp - entry)
                 moved_dist = abs(current_price - entry)
                 is_profit = (current_price > entry) if r["action"] == "BUY" else (current_price < entry)
-                if is_profit and total_dist > 0 and (moved_dist >= (total_dist * 0.5)):
+                if is_profit and total_dist > 0 and (moved_dist >= (total_dist * 0.3)):
                     if r.get("be_active") != True:
                         new_sl = entry + (tp - entry) * 0.25
                         request = {
