@@ -367,7 +367,7 @@ export default function App() {
           'Authorization': THE_PIN,
           'ngrok-skip-browser-warning': 'true'
         },
-        body: JSON.stringify({ symbol: yfSymbol, mt5_symbol: mt5Symbol, signal: op }),
+        body: JSON.stringify({ symbol: rawSym, mt5_symbol: mt5Symbol, signal: op }),
       });
       
       if (!res.ok) {
