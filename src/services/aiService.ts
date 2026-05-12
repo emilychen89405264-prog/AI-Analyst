@@ -274,7 +274,12 @@ ${TRADING_STRATEGY_SKILL}
 }
 export async function getGlobalOpportunities(category: string): Promise<Opportunity[]> {
   const prompt = `
-你是一位專注於「機構訂單流 (Order Flow)」與「多時區分析 (MTF)」的量化交易大師。請針對「${category}」進行深度掃描，篩選出前三個最高質量的機會。
+你是一位專注於「機構訂單流 (Order Flow)」與「多時區分析 (MTF)」的量化交易大師。請針對「${category}」進行深度掃描，必須包含：
+1. 美股指數 (如：US30 / 道瓊工業平均指數)
+2. 貴金屬 (如：XAUUSD / 黃金)
+3. 主要外匯對 (如：EURUSD, GBPUSD, USDJPY)
+從中篩選出前三個最高質量的機會。
+
 
 你的分析必須嚴格執行以下「三重過濾」邏輯：
 1. 趨勢共振 (Trend Resonance)：必須先判斷 4H 或 Daily 大周期趨勢，1H 訊號必須與大趨勢一致。禁止逆大勢操作！
