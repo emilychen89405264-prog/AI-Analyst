@@ -12,13 +12,11 @@ import { TradeDashboard } from './components/TradeDashboard';
 import { ChatAssistant } from './components/ChatAssistant';
 
 // --- Types & Constants ---
-export type AppView = 'macro' | 'forex' | 'stock' | 'crypto' | 'detail' | 'dashboard';
+export type AppView = 'macro' | 'forex' | 'detail' | 'dashboard';
 
 const SIDEBAR_ITEMS = [
   { id: 'macro', name: '全球宏觀趨勢', icon: Globe },
   { id: 'forex', name: '外匯市場分析', icon: BarChart3 },
-  { id: 'stock', name: '全球股票機會', icon: TrendingUp },
-  { id: 'crypto', name: '加密貨幣觀察', icon: Coins },
 ];
 
 const YF_SYMBOL_MAP: Record<string, string> = {
