@@ -245,10 +245,11 @@ export default function App() {
           }
 
           // --- B. 正常的自動下單邏輯 (排除 JPY, US30, AUDUSD, EURUSD) ---
-          const isBlocked = op.symbol.toUpperCase().includes('JPY') || 
-                            op.symbol.toUpperCase().includes('US30') ||
-                            op.symbol.toUpperCase().includes('AUDUSD') ||
-                            op.symbol.toUpperCase().includes('EURUSD');
+          const normalizedSym = op.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const isBlocked = normalizedSym.includes('JPY') || 
+                            normalizedSym.includes('US30') ||
+                            normalizedSym.includes('AUDUSD') ||
+                            normalizedSym.includes('EURUSD');
           if (op.confidence > 85 && !autoTradedSymbols.has(op.symbol) && !isBlocked && !currentPos) {
             console.log(`[AUTO-PILOT] 背景捕獲高信心訊號 (${op.confidence}%): ${op.symbol}`);
             setAutoTradedSymbols(prev => new Set(prev).add(op.symbol));
