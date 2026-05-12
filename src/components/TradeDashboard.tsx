@@ -106,7 +106,10 @@ export const TradeDashboard: React.FC<{ apiUrl?: string; authPin?: string }> = (
     return acc;
   }, {});
 
-  const assetList = Object.values(assetStats).sort((a: any, b: any) => b.profit - a.profit);
+  const allowedSymbols = ['XAUUSD', 'GBPUSD', 'GBPJPY'];
+  const assetList = Object.values(assetStats)
+    .filter((a: any) => allowedSymbols.some(s => a.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '').includes(s)))
+    .sort((a: any, b: any) => b.profit - a.profit);
 
   if (loading) {
     return <div className="text-white p-8 animate-pulse">載入數據中...</div>;

@@ -244,13 +244,12 @@ export default function App() {
             });
           }
 
-          // --- B. 正常的自動下單邏輯 (排除 JPY, US30, AUDUSD, EURUSD) ---
+          // --- B. 嚴格自動下單白名單 (僅限 XAUUSD, GBPUSD, GBPJPY) ---
+          const allowedSymbols = ['XAUUSD', 'GBPUSD', 'GBPJPY'];
           const normalizedSym = op.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
-          const isBlocked = normalizedSym.includes('JPY') || 
-                            normalizedSym.includes('US30') ||
-                            normalizedSym.includes('AUDUSD') ||
-                            normalizedSym.includes('EURUSD');
-          if (op.confidence > 85 && !autoTradedSymbols.has(op.symbol) && !isBlocked && !currentPos) {
+          const isAllowed = allowedSymbols.some(s => normalizedSym.includes(s));
+          
+          if (op.confidence > 85 && !autoTradedSymbols.has(op.symbol) && isAllowed && !currentPos) {
             console.log(`[AUTO-PILOT] 背景捕獲高信心訊號 (${op.confidence}%): ${op.symbol}`);
             setAutoTradedSymbols(prev => new Set(prev).add(op.symbol));
             handleExecuteTrade(op, true);
