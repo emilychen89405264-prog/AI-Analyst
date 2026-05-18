@@ -1,44 +1,31 @@
 export const TRADING_STRATEGY_SKILL = `
-## Trading Strategy Instructions
+## Advanced Quant & SMC Trading Strategy Instructions
 
-### 1. Synthesize Multiple Signals
-Integrate analysis from different sources:
-- **Technical Analysis**: Trend, momentum, support/resistance
-- **Sentiment Analysis**: Market mood, fear/greed levels
-- **Real-Time Data**: Order flow, liquidity, recent price action
+### 1. Market Structure & SMC (Smart Money Concepts)
+- **Identify True Trend**: Only trade in the direction of the 4H/Daily Market Structure. Ignore short-term noise if it contradicts the higher timeframe.
+- **Liquidity Sweeps**: Wait for retail liquidity to be swept (Buy Side or Sell Side Liquidity) before entering. Avoid trading standard breakouts; favor entries on the retest or after a sweep.
+- **Order Blocks (OB) & FVG**: Entries should ideally align with unmitigated Order Blocks or Fair Value Gaps.
 
-Weight each component by:
-- Confidence level (higher confidence = higher weight)
-- Timeframe alignment (multiple timeframes agreeing)
-- Signal strength (strong vs weak signals)
+### 2. Gold (XAUUSD) Specific Optimizations (CRITICAL)
+- **High Volatility Adjustment**: Gold is highly susceptible to "stop hunts" (wicks). Stop Losses MUST be placed safely below/above the structural swing low/high, leaving enough breathing room (e.g., at least $3-$5 away from entry).
+- **Macro Alignment**: Gold trades MUST consider US Dollar Index (DXY) and US Yield trends (from the news data). If USD news is strongly bullish, strictly avoid Gold longs.
+- **Avoid Chopping**: If Gold is in a tight range or consolidation, DO NOT force trades. Set recommended_action to "HOLD".
 
-### 2. Resolve Conflicting Signals
-When analyses disagree:
-- **Technical bullish, Sentiment bearish**: Often means "buy the dip" if technical is strong
-- **Technical bearish, Sentiment bullish**: Often means "sell the rally" if technical is strong
-- **Mixed timeframes**: Defer to higher timeframe for trend direction
-- **Low confidence all around**: Recommend staying out or reducing position size
+### 3. Synthesize Multiple Signals & Resolution
+- **Trend > Sentiment**: Technical Market Structure always overrides short-term market noise.
+- **Conflicting Timeframes**: If 15m/1H is bearish but 4H is bullish, recommend HOLD until lower timeframes shift to align with the 4H trend.
+- **Strict Entry Filter**: If the setup is not pristine (confidence < 85%), DO NOT issue a BUY/SELL signal. Output HOLD. We prefer missing a trade over taking a low-probability loss.
 
-### 3. Generate eval_note (-1 to 1 scale)
-**Strong Buy Signals (0.6 to 1.0)**: Multiple timeframes aligned bullish, strong uptrend, extreme fear, high confidence.
-**Moderate Buy (0.3 to 0.6)**: Majority bullish, some conflicting, medium confidence.
-**Neutral (-0.3 to 0.3)**: Mixed signals, ranging market, low confidence.
-**Moderate Sell (-0.6 to -0.3)**: Majority bearish, some conflicting, medium confidence.
-**Strong Sell (-1.0 to -0.6)**: Multiple timeframes aligned bearish, strong downtrend, extreme greed, high confidence.
+### 4. Generate eval_note (-1 to 1 scale)
+- **Strong Buy Signals (0.8 to 1.0)**: 4H & 1H aligned bullish, price mitigated a discount OB, DXY is weak, news is supportive.
+- **Neutral / No Trade (-0.5 to 0.5)**: Choppy market, inside a range, conflicting macro/technicals. (Action MUST be HOLD).
+- **Strong Sell (-1.0 to -0.8)**: 4H & 1H aligned bearish, price mitigated a premium OB, DXY is strong.
 
-### 4. Risk Assessment & 5. Position Sizing
-- **High confidence, Low volatility**: Larger positions (FULL)
-- **High confidence, High volatility**: Medium positions (MEDIUM)
-- **Medium confidence**: Smaller positions (SMALL)
-- **Low confidence**: Minimal or no position (NONE)
+### 5. Risk & Position Sizing
+- **Strict SL Rules**: Never place SL in the middle of a range. SL must logically invalidate the structural thesis.
+- **Take Profit (TP)**: Target a minimum 1:1.5 Risk-to-Reward. TP1 should be the nearest major liquidity pool or resistance/support.
 
-### 6. Entry and Exit Strategy
-- **Entry Points**: Strong signals (Market/Limit), Medium (Pullbacks), Weak (Scale in).
-- **Stop Loss Placement**: Below recent swing low/above swing high, below key MAs.
-- **Take Profit Targets**: R:R 1-2, major resistance/support, trailing stop.
-
-### 7. Market Regime Adaptation
-- **Trending Markets**: Follow trend, use pullbacks, trail stops.
-- **Ranging Markets**: Fade extremes, tighter targets.
-- **Volatile Markets**: Wider stops, smaller sizes, quick profit.
+### 6. Execution Protocol
+- ONLY set recommended_action to 'BUY' or 'SELL' if eval_note is > 0.8 or < -0.8.
+- For any score between -0.8 and 0.8, recommended_action MUST be 'HOLD'.
 `;
