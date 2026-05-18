@@ -330,7 +330,11 @@ export const TradeDashboard: React.FC<{ apiUrl?: string; authPin?: string }> = (
                                     'Authorization': authPin || '8888',
                                     'ngrok-skip-browser-warning': 'true'
                                   },
-                                  body: JSON.stringify({ symbol: trade.symbol, mt5_symbol: trade.symbol })
+                                  body: JSON.stringify({ 
+                                    symbol: trade.symbol, 
+                                    mt5_symbol: trade.symbol,
+                                    isManual: true 
+                                  })
                                 });
                                 if (res.ok) alert('✅ 平倉指令已送出');
                                 else alert('❌ 平倉失敗');

@@ -77,6 +77,27 @@ export interface Opportunity {
 
 const analysisCache: Record<string, AIAnalysis> = {};
 
+/**
+ * 第一階段：情報員 (Researcher)
+ * 使用聯網搜尋獲取最新市場資訊，避開 JSON Schema 與 Google Search 的衝突
+ */
+export async function getLatestMarketNews(subject: string): Promise<string> {
+  try {
+    console.log(`🌐 [RESEARCHER] 正在聯網搜尋最新情報: ${subject}...`);
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `請針對「${subject}」進行深度搜尋。請總結目前的即時價格、最近一小時內的重大新聞、經濟數據（如 Fed、非農、CPI）以及地緣政治風險。請提供具體的關鍵數據供分析師參考。`,
+      config: {
+        tools: [{ googleSearch: {} }]
+      }
+    });
+    return response.text || '無法取得最新情報。';
+  } catch (e) {
+    console.error('Researcher Error:', e);
+    return '情報搜尋暫時不可用，將依據內部知識庫分析。';
+  }
+}
+
 export async function getAnalystInsight(assetType: string, assetName: string, timeframe: string): Promise<AIAnalysis> {
   const cacheKey = `${assetType}-${assetName}-${timeframe}`;
   
@@ -99,9 +120,15 @@ export async function getAnalystInsight(assetType: string, assetName: string, ti
     return analysisCache[cacheKey];
   }
 
+  // 1. 先啟動情報員搜尋最新消息
+  const marketNews = await getLatestMarketNews(assetName);
+
   const prompt = `
 你是一位擁有超過30年經驗的頂級外匯及股市分析師、頂尖量化交易專家。
-請搜尋並分析「${assetName} (${assetType})」在「${timeframe}」級別的最新即時價格與市場新聞。
+請分析「${assetName} (${assetType})」在「${timeframe}」級別的走勢。
+
+【最新實時情報 (已聯網搜尋)】：
+${marketNews}
 
 ${TRADING_STRATEGY_SKILL}
 
@@ -273,6 +300,9 @@ ${TRADING_STRATEGY_SKILL}
   }
 }
 export async function getGlobalOpportunities(category: string): Promise<Opportunity[]> {
+  // 1. 先啟動情報員進行全市場情報掃描
+  const globalNews = await getLatestMarketNews(`${category} 相關之黃金 XAUUSD、美股指數、主要外匯對之即時行情與重大經濟事件`);
+
   const prompt = `
 你是一位專注於「機構訂單流 (Order Flow)」與「多時區分析 (MTF)」的量化交易大師。請針對「${category}」進行深度掃描，必須包含：
 1. 美股指數 (如：US30 / 道瓊工業平均指數)
@@ -280,6 +310,8 @@ export async function getGlobalOpportunities(category: string): Promise<Opportun
 3. 主要外匯對 (如：EURUSD, GBPUSD, USDJPY)
 從中篩選出前三個最高質量的機會。
 
+【最新全市場情報 (已聯網搜尋)】：
+${globalNews}
 
 你的分析必須嚴格執行以下「三重過濾」邏輯：
 1. 趨勢共振 (Trend Resonance)：必須先判斷 4H 或 Daily 大周期趨勢，1H 訊號必須與大趨勢一致。禁止逆大勢操作！

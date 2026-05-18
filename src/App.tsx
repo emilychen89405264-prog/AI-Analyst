@@ -164,7 +164,7 @@ export default function App() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loadingOps, setLoadingOps] = useState(false);
   const [executingId, setExecutingId] = useState<string | null>(null);
-  const [nextRefresh, setNextRefresh] = useState(60); // 1分鐘倒數(秒)
+  const [nextRefresh, setNextRefresh] = useState(900); // 15分鐘倒數(秒)
   const [autoTradedActions, setAutoTradedActions] = useState<Record<string, string>>({});
   // --- 智能解析網址參數 (初始化階段) ---
   const params = new URLSearchParams(window.location.search);
@@ -206,7 +206,7 @@ export default function App() {
   }, []);
 
   const fetchOps = async () => {
-    // 1. 【核心掃描】提升頻率至 1 分鐘，並精確比對品種執行應急平倉
+    // 1. 【核心掃描】每 15 分鐘掃描一次，並精確比對品種執行應急平倉
     try {
       const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
       const historyRes = await fetch(`${API_BASE}/api/trade-history?t=` + Date.now(), {
@@ -223,12 +223,14 @@ export default function App() {
           const cleanSym = rawSym.toUpperCase().replace(/[^A-Z0-9]/g, '');
           const mt5Symbol = MT5_SYMBOL_MAP[cleanSym] || MT5_SYMBOL_MAP[rawSym] || cleanSym;
           
-          // --- A. 精確比對反向訊號 ---
+          // --- A. 獲取當前持倉狀態 (用於判斷是否重複開單) ---
           const currentPos = openPositions.find((p: any) => {
             const pSym = p.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
             return pSym === cleanSym;
           });
 
+          /* 
+          // --- 應急平倉邏輯 (已停用，避免 AI 變心導致亂平倉) ---
           if (currentPos && op.confidence > 90 && currentPos.action !== op.action) {
             console.log(`🚨 [EMERGENCY REVERSAL] 偵測到反向訊號 (${op.confidence}%): ${cleanSym}. 執行平倉!`);
             const API_BASE = customApiUrl || `http://${window.location.hostname}:3001`;
@@ -242,20 +244,16 @@ export default function App() {
               body: JSON.stringify({ symbol: rawSym, mt5_symbol: mt5Symbol })
             });
           }
+          */
 
           // --- B. 嚴格自動下單白名單 (僅限 XAUUSD, GBPUSD, GBPJPY) ---
           const allowedSymbols = ['XAUUSD', 'GBPUSD', 'GBPJPY'];
           const isAllowed = allowedSymbols.some(s => cleanSym.includes(s));
           
           if (op.confidence > 85 && isAllowed && !currentPos) {
-            // 只有當「方向不同」或者是「尚未交易過」時才允許下單
-            const lastAction = autoTradedActions[cleanSym];
-            if (lastAction !== op.action) {
-              console.log(`[AUTO-PILOT] 背景捕獲高信心訊號 (${op.confidence}%): ${cleanSym} - 方向: ${op.action}`);
-              setAutoTradedActions(prev => ({ ...prev, [cleanSym]: op.action }));
-              handleExecuteTrade(op, true);
-            }
-          } else if (isBlocked && op.confidence > 85) {
+            console.log(`[AUTO-PILOT] 背景捕獲高信心訊號 (${op.confidence}%): ${cleanSym} - 方向: ${op.action}`);
+            handleExecuteTrade(op, true);
+          } else if (!isAllowed && op.confidence > 85) {
             console.log(`[OBSERVE-ONLY] ${op.symbol} 僅供觀測，已跳過自動下單`);
           }
         }
@@ -315,7 +313,7 @@ export default function App() {
 
       setOpportunities(data);
       setLoadingOps(false);
-      setNextRefresh(60); 
+      setNextRefresh(900); 
     }
   };
 
@@ -330,7 +328,7 @@ export default function App() {
       setNextRefresh(prev => {
         if (prev <= 1) {
           fetchOps(); // 時間到，執行掃描
-          return 60;
+          return 900;
         }
         return prev - 1;
       });

@@ -140,7 +140,7 @@ def update_trade_profits():
                 total_dist = abs(tp - entry)
                 moved_dist = abs(current_price - entry)
                 is_profit = (current_price > entry) if r["action"] == "BUY" else (current_price < entry)
-                if is_profit and total_dist > 0 and (moved_dist >= (total_dist * 0.3)):
+                if is_profit and total_dist > 0 and (moved_dist >= (total_dist * 0.5)):
                     if r.get("be_active") != True:
                         new_sl = entry + (tp - entry) * 0.25
                         request = {
@@ -165,17 +165,26 @@ def execute_mt5_trade(signal):
     info, symbol_mt5 = get_symbol_info(symbol_input)
     if not info: return {"error": f"Symbol {symbol_input} not found"}
 
-    lot = 0.01
+    # 1. 獲取報價與基礎資訊
     price = mt5.symbol_info_tick(symbol_mt5).ask if signal["action"] == "BUY" else mt5.symbol_info_tick(symbol_mt5).bid
     
-    point = info.point
-    
-    # 計算基於百分比的價格距離
+    # 2. 計算基於百分比的止損與止盈價格
     sl_dist = price * (signal["sl_pct"] / 100.0)
     tp_dist = price * (signal["tp_pct"] / 100.0)
     
     sl = price - sl_dist if signal["action"] == "BUY" else price + sl_dist
     tp = price + tp_dist if signal["action"] == "BUY" else price - tp_dist
+
+    # 手數設定 (依用戶要求：GBPUSD 設為 0.02，其餘維持 0.01)
+    lot = 0.02 if symbol_mt5.upper().startswith("GBPUSD") else 0.01
+    
+    # --- Debug Logging ---
+    debug_info = f"--- Trade Attempt: {symbol_mt5} {signal['action']} ---\n"
+    debug_info += f"Price: {price}, SL_Pct: {signal['sl_pct']}, TP_Pct: {signal['tp_pct']}, FixedLot: {lot}\n"
+
+    with open("trade_debug.log", "a", encoding="utf-8") as f:
+        f.write(debug_info)
+    print(f"[TRADING] Fixed Lot size: {lot}")
 
     filling_type = mt5.ORDER_FILLING_FOK
     if (info.filling_mode & 2): filling_type = mt5.ORDER_FILLING_IOC

@@ -288,20 +288,25 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/close-position', authMiddleware, (req, res) => {
-  const { symbol, mt5_symbol } = req.body;
+  const { symbol, mt5_symbol, isManual } = req.body;
   const clientInfo = req.headers['user-agent'] || 'Unknown Device';
-  console.log(`🚨 [MANUAL EXIT] 收到平倉請求！來源: ${req.ip}, 設備: ${clientInfo}`);
-  console.log(`[EMERGENCY] Closing all positions for ${mt5_symbol || symbol}`);
   
+  if (isManual !== true) {
+    // 終極保險：直接停用自動入口，防止舊分頁亂關單
+    console.log(`🛡️ [SECURITY BLOCK] 攔截到自動平倉請求！來源: ${req.ip}, 設備: ${clientInfo}`);
+    return res.status(403).json({ error: '自動平倉功能已鎖定，若要平倉請點擊按鈕手動操作。' });
+  }
+
+  console.log(`🚨 [MANUAL EXIT] 收到合法手動平倉請求！品種: ${symbol}, 來源: ${req.ip}`);
   const py = spawn(pythonCmd, ['mt5_ai_bot.py', '--action', 'CLOSE', '--symbol', symbol, '--mt5_symbol', mt5_symbol || '']);
   
   let output = '';
   py.stdout.on('data', (data) => output += data.toString());
   py.stderr.on('data', (data) => console.error(`[PY-ERR] ${data}`));
-  
+
   py.on('close', (code) => {
     if (code === 0) {
-      sendTelegramMessage(`⏹️ [平倉成功] 品種：${symbol}\n來源設備：${clientInfo.substring(0, 30)}...`);
+      sendTelegramMessage(`⏹️ [手動平倉成功] 品種：${symbol}\n來源設備：${clientInfo.substring(0, 30)}...`);
       res.json({ success: true, message: `Closed ${symbol} successfully`, output });
     } else {
       res.status(500).json({ error: 'Close failed', output });
