@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GlobalInvest AI — 交易成效分析</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07090f;
+  --bg2: #0c1120;
+  --card: rgba(255,255,255,0.04);
+  --card-h: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.07);
+  --green: #00d4aa;
+  --green-d: rgba(0,212,170,0.12);
+  --red: #ff4757;
+  --red-d: rgba(255,71,87,0.12);
+  --blue: #4f8ef7;
+  --yellow: #ffd32a;
+  --t1: #eef0f6;
+  --t2: #7a8499;
+  --t3: #3a4258;
+  --r: 14px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(0,212,170,0.07),transparent);pointer-events:none;}
+
+/* ── layout ── */
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px;}
+
+/* ── header ── */
+header{padding:26px 0 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.logo-row{display:flex;align-items:center;gap:14px;}
+.logo{width:42px;height:42px;background:linear-gradient(135deg,var(--green),#0ea5e9);border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px;color:#000;flex-shrink:0;}
+.logo-text h1{font-size:19px;font-weight:700;background:linear-gradient(135deg,#fff 40%,var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.logo-text p{font-size:12px;color:var(--t2);margin-top:1px;}
+#last-updated{font-size:12px;color:var(--t2);}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.4px;}
+.pill-green{background:var(--green-d);color:var(--green);border:1px solid rgba(0,212,170,.25);}
+
+/* ── drop zone ── */
+#drop-area{border:2px dashed rgba(0,212,170,.25);border-radius:20px;padding:60px 32px;text-align:center;cursor:pointer;transition:.3s;margin:32px 0;background:rgba(0,212,170,.02);}
+#drop-area:hover,#drop-area.over{border-color:var(--green);background:rgba(0,212,170,.06);transform:scale(1.003);}
+#drop-area .icon{font-size:52px;margin-bottom:16px;}
+#drop-area h2{font-size:20px;font-weight:600;margin-bottom:8px;}
+#drop-area p{color:var(--t2);font-size:13px;margin-bottom:24px;line-height:1.6;}
+#drop-area input[type=file]{display:none;}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s;}
+.btn-g{background:linear-gradient(135deg,var(--green),#0ea5e9);color:#000;}
+.btn-g:hover{opacity:.9;transform:translateY(-1px);}
+.btn-ghost{background:transparent;color:var(--green);border:1px solid rgba(0,212,170,.35);}
+.btn-ghost:hover{background:var(--green-d);}
+.btn-gap{margin-left:10px;}
+
+/* ── dashboard ── */
+#dash{display:none;animation:fadeUp .5s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── summary bar ── */
+.sumbar{display:flex;gap:20px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 22px;margin-bottom:22px;}
+.sitem{display:flex;align-items:center;gap:8px;font-size:13px;}
+.sitem .lb{color:var(--t2);}
+.sitem .vl{font-weight:600;}
+
+/* ── kpi grid ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:22px;}
+.kcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;position:relative;overflow:hidden;transition:.25s;cursor:default;}
+.kcard::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),transparent);opacity:0;transition:.25s;}
+.kcard:hover{background:var(--card-h);transform:translateY(-2px);}
+.kcard:hover::after{opacity:1;}
+.klabel{font-size:11px;color:var(--t2);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
+.kvalue{font-size:28px;font-weight:700;line-height:1;margin-bottom:6px;}
+.ksub{font-size:11px;color:var(--t2);}
+.kcard.green .kvalue{color:var(--green);}
+.kcard.red   .kvalue{color:var(--red);}
+.kcard.blue  .kvalue{color:var(--blue);}
+.kcard.yellow .kvalue{color:var(--yellow);}
+
+/* ── charts ── */
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px;}
+.ct{font-size:14px;font-weight:600;margin-bottom:3px;}
+.cs{font-size:11px;color:var(--t2);margin-bottom:18px;}
+.ch{position:relative;}
+.ch.h300{height:300px;}
+.ch.h240{height:240px;}
+.ch.h200{height:200px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px;}
+.mb18{margin-bottom:18px;}
+
+/* ── table ── */
+.tcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:22px;}
+.thead{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.filters{display:flex;gap:6px;flex-wrap:wrap;}
+.fbtn{padding:5px 13px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--t2);transition:.2s;}
+.fbtn.act{background:var(--green-d);border-color:rgba(0,212,170,.4);color:var(--green);}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{text-align:left;padding:9px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);}
+.tbl td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.025);color:var(--t2);white-space:nowrap;}
+.tbl tr:hover td{background:rgba(255,255,255,.02);}
+.tbl td.sym{color:var(--t1);font-weight:600;}
+.tag{display:inline-block;padding:2px 9px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.4px;}
+.tag-b{background:var(--green-d);color:var(--green);}
+.tag-s{background:var(--red-d);color:var(--red);}
+.pos{color:var(--green);font-weight:600;}
+.neg{color:var(--red);font-weight:600;}
+.nt{color:var(--t2);}
+
+/* ── date filter ── */
+.date-filter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 20px;margin-bottom:18px;}
+.date-filter label{font-size:12px;color:var(--t2);white-space:nowrap;}
+.date-filter input[type=date]{background:#0d1329;border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 10px;font-family:'Inter',sans-serif;cursor:pointer;}
+.date-filter input[type=date]:focus{outline:none;border-color:rgba(0,212,170,.5);}
+::-webkit-calendar-picker-indicator{filter:invert(.6);cursor:pointer;}
+.date-sep{color:var(--t3);font-size:12px;}
+
+/* ── footer ── */
+footer{text-align:center;padding:22px 0;color:var(--t3);font-size:11px;border-top:1px solid var(--border);margin-top:8px;}
+
+/* ── responsive ── */
+@media(max-width:900px){
+  .two-col,.three-col{grid-template-columns:1fr;}
+}
+@media(max-width:600px){
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .wrap{padding:0 14px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- Header -->
+<header>
+  <div class="logo-row">
+    <div class="logo">G</div>
+    <div class="logo-text">
+      <h1>GlobalInvest AI</h1>
+      <p>交易成效分析儀表板</p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span id="last-updated">尚未載入資料</span>
+    <span class="pill pill-green">⚡ EA v2.0</span>
+    <button class="btn btn-ghost" onclick="document.getElementById('fileInput').click()">📁 選擇新檔案</button>
+    <input type="file" id="fileInput" accept=".json" onchange="handleFile(this.files[0])">
+  </div>
+</header>
+
+<!-- Drop Zone -->
+<div id="drop-area" onclick="document.getElementById('fileInput').click()">
+  <div class="icon">📊</div>
+  <h2>拖入 trade_history.json</h2>
+  <p>
+    先在 MT5 執行 <strong>TradeExporter</strong> 腳本產生 JSON 檔<br>
+    檔案位置：<code style="color:var(--green);font-size:12px;">MT5資料夾\MQL5\Files\trade_history.json</code><br>
+    然後把檔案拖到這裡，或點擊選擇
+  </p>
+  <button class="btn btn-g" onclick="event.stopPropagation();document.getElementById('fileInput').click()">
+    📁 選擇 JSON 檔
+  </button>
+  <button class="btn btn-ghost btn-gap" onclick="event.stopPropagation();loadDemo()">
+    🎮 載入示範資料
+  </button>
+</div>
+
+<!-- Dashboard -->
+<div id="dash">
+
+  <!-- Summary Bar -->
+  <div class="sumbar">
+    <div class="sitem"><span class="lb">帳號</span><span class="vl" id="s-login">—</span></div>
+    <div class="sitem"><span class="lb">餘額</span><span class="vl" id="s-balance">—</span></div>
+    <div class="sitem"><span class="lb">淨值</span><span class="vl" id="s-equity">—</span></div>
+    <div class="sitem"><span class="lb">匯出時間</span><span class="vl" id="s-time">—</span></div>
+    <div class="sitem"><span class="lb">分析區間</span><span class="vl" id="s-range">—</span></div>
+  </div>
+
+  <!-- Date Filter -->
+  <div class="date-filter">
+    <label>📅 觀察區間</label>
+    <input type="date" id="f-from" value="2026-06-11" onchange="applyDateFilter()">
+    <span class="date-sep">→</span>
+    <input type="date" id="f-to" onchange="applyDateFilter()">
+    <button class="btn btn-ghost" style="padding:6px 14px;font-size:12px;" onclick="resetDateFilter()">全部顯示</button>
+    <span id="f-count" style="font-size:12px;color:var(--t2);margin-left:4px;"></span>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kcard green">
+      <div class="klabel">累計淨利</div>
+      <div class="kvalue" id="k-pnl">—</div>
+      <div class="ksub" id="k-pnl-sub">—</div>
+    </div>
+    <div class="kcard" id="kc-wr">
+      <div class="klabel">勝率</div>
+      <div class="kvalue" id="k-wr">—</div>
+      <div class="ksub" id="k-wr-sub">—</div>
+    </div>
+    <div class="kcard blue">
+      <div class="klabel">獲利因子</div>
+      <div class="kvalue" id="k-pf">—</div>
+      <div class="ksub">Gross Profit / Gross Loss</div>
+    </div>
+    <div class="kcard red">
+      <div class="klabel">最大回撤</div>
+      <div class="kvalue" id="k-dd">—</div>
+      <div class="ksub" id="k-dd-sub">—</div>
+    </div>
+    <div class="kcard">
+      <div class="klabel">總交易筆數</div>
+      <div class="kvalue neutral" id="k-total">—</div>
+      <div class="ksub" id="k-total-sub">—</div>
+    </div>
+    <div class="kcard yellow">
+      <div class="klabel">期望值</div>
+      <div class="kvalue" id="k-exp">—</div>
+      <div class="ksub">每筆平均期望</div>
+    </div>
+  </div>
+
+  <!-- Equity Curve -->
+  <div class="chart-card mb18">
+    <div class="ct">📈 資金曲線</div>
+    <div class="cs">累計淨利走勢（每筆交易後）</div>
+    <div class="ch h300"><canvas id="chart-equity"></canvas></div>
+  </div>
+
+  <!-- Monthly + Symbol -->
+  <div class="two-col">
+    <div class="chart-card">
+      <div class="ct">📅 月份損益</div>
+      <div class="cs">每月淨利（USD）</div>
+      <div class="ch h240"><canvas id="chart-monthly"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="ct">🪙 品種分佈</div>
+      <div class="cs">各品種損益佔比</div>
+      <div class="ch h240"><canvas id="chart-symbol"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Win/Loss + Hour -->
+  <div class="three-col">
+    <div class="chart-card">
+      <div class="ct">🎯 勝負分佈</div>
+      <div class="cs">盈利 vs 虧損筆數</div>
+      <div class="ch h200"><canvas id="chart-winloss"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="ct">⏰ 時段分佈</div>
+      <div class="cs">各小時進場次數（伺服器時間）</div>
+      <div class="ch h200"><canvas id="chart-hour"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="ct">📐 連勝/連虧</div>
+      <div class="cs">最長連勝/連虧</div>
+      <div class="ch h200"><canvas id="chart-streak"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Trades Table -->
+  <div class="tcard">
+    <div class="thead">
+      <div>
+        <div class="ct">📋 交易明細</div>
+        <div class="cs" style="margin-bottom:0" id="tbl-sub">—</div>
+      </div>
+      <div class="filters">
+        <button class="fbtn act" onclick="filterTbl('all',this)">全部</button>
+        <button class="fbtn" onclick="filterTbl('win',this)">盈利</button>
+        <button class="fbtn" onclick="filterTbl('loss',this)">虧損</button>
+        <button class="fbtn" onclick="filterTbl('XAUUSD',this)">黃金</button>
+        <button class="fbtn" onclick="filterTbl('GBPUSD',this)">GBP</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="tbl" id="trades-tbl">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>品種</th>
+            <th>方向</th>
+            <th>手數</th>
+            <th>進場</th>
+            <th>出場</th>
+            <th>進場時間</th>
+            <th>出場時間</th>
+            <th>持倉</th>
+            <th>損益</th>
+            <th>淨損益</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- end #dash -->
+<footer>GlobalInvest AI Analysis Dashboard v2.0 · 資料來源：MT5 TradeExporter.mq5</footer>
+</div><!-- end .wrap -->
+
+<script>
+// ══════════════════════════════════════════
+// Chart defaults
+// ══════════════════════════════════════════
+Chart.defaults.color = '#7a8499';
+Chart.defaults.font.family = 'Inter';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+
+let allTrades = [];
+let charts = {};
+
+// ══════════════════════════════════════════
+// Drag & Drop
+// ══════════════════════════════════════════
+const dropArea = document.getElementById('drop-area');
+['dragenter','dragover'].forEach(e => dropArea.addEventListener(e, ev => { ev.preventDefault(); dropArea.classList.add('over'); }));
+['dragleave','drop'].forEach(e => dropArea.addEventListener(e, ev => { ev.preventDefault(); dropArea.classList.remove('over'); }));
+dropArea.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if(f) handleFile(f); });
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      // 存入 localStorage，下次重整自動恢復
+      try { localStorage.setItem('gi_trade_data', e.target.result); } catch(ex){}
+      loadData(data);
+    } catch(err) {
+      alert('❌ JSON 格式錯誤，請確認是否為 TradeExporter 產生的檔案');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// 頁面載入時自動恢復資料
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1) 先嘗試從同目錄讀取 trade_history.json（GitHub Pages 模式）
+  try {
+    const res = await fetch('./trade_history.json', { cache: 'no-cache' });
+    if (res.ok) {
+      const data = await res.json();
+      loadData(data);
+      dropArea.style.display = 'none';
+      return;
+    }
+  } catch(e) {}
+
+  // 2) 退而求其次：從 localStorage 恢復（本機模式）
+  const saved = localStorage.getItem('gi_trade_data');
+  if (saved) {
+    try {
+      loadData(JSON.parse(saved));
+      dropArea.style.display = 'none';
+    } catch(e) {
+      localStorage.removeItem('gi_trade_data');
+    }
+  }
+});
+
+// ══════════════════════════════════════════
+// Main data loader
+// ══════════════════════════════════════════
+let rawAccount = {};
+
+function loadData(data) {
+  rawAccount = data.account || {};
+  const trades = (data.trades || data || []).sort((a,b) => new Date(a.close_time) - new Date(b.close_time));
+  allTrades = trades;
+
+  // Set default "to" date to today
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('f-to').value = today;
+
+  // Summary bar
+  document.getElementById('s-login').textContent   = rawAccount.login   || '—';
+  document.getElementById('s-balance').textContent  = rawAccount.balance ? '$' + fmt(rawAccount.balance) : '—';
+  document.getElementById('s-equity').textContent   = rawAccount.equity  ? '$' + fmt(rawAccount.equity)  : '—';
+  document.getElementById('s-time').textContent     = rawAccount.exported_at || '—';
+  document.getElementById('last-updated').textContent = '更新：' + (rawAccount.exported_at || new Date().toLocaleString('zh-TW'));
+
+  dropArea.style.display = 'none';
+  document.getElementById('dash').style.display = 'block';
+
+  applyDateFilter();
+}
+
+function applyDateFilter() {
+  const from = document.getElementById('f-from').value; // '2026-06-11'
+  const to   = document.getElementById('f-to').value;
+
+  // MT5 exports dates as "2026.06.11 HH:MM" (dots), normalize to "2026-06-11" for comparison
+  const tradeDate = t => (t.close_time || '').slice(0,10).replace(/\./g, '-');
+
+  let filtered = allTrades;
+  if (from) filtered = filtered.filter(t => tradeDate(t) >= from);
+  if (to)   filtered = filtered.filter(t => tradeDate(t) <= to);
+
+  document.getElementById('f-count').textContent =
+    filtered.length + ' 筆（共 ' + allTrades.length + ' 筆）';
+
+  if (filtered.length > 0) {
+    document.getElementById('s-range').textContent =
+      filtered[0].close_time + ' ~ ' + filtered[filtered.length-1].close_time;
+  } else {
+    document.getElementById('s-range').textContent = '無資料';
+  }
+
+  const metrics = calcMetrics(filtered);
+  renderKPIs(metrics);
+  renderCharts(filtered, metrics);
+  renderTable(filtered);
+}
+
+function resetDateFilter() {
+  document.getElementById('f-from').value = '';
+  document.getElementById('f-to').value   = new Date().toISOString().slice(0,10);
+  applyDateFilter();
+}
+
+// ══════════════════════════════════════════
+// Metrics calculation
+// ══════════════════════════════════════════
+function calcMetrics(trades) {
+  const wins   = trades.filter(t => t.net_profit > 0);
+  const losses = trades.filter(t => t.net_profit < 0);
+  const total  = trades.length;
+  const totalPnL = trades.reduce((s,t) => s + t.net_profit, 0);
+  const grossWin = wins.reduce((s,t) => s + t.net_profit, 0);
+  const grossLoss = Math.abs(losses.reduce((s,t) => s + t.net_profit, 0));
+  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? 999 : 0;
+  const avgWin  = wins.length   > 0 ? grossWin  / wins.length   : 0;
+  const avgLoss = losses.length > 0 ? grossLoss / losses.length : 0;
+  const winRate = total > 0 ? wins.length / total : 0;
+  const expectancy = winRate * avgWin - (1 - winRate) * avgLoss;
+
+  // Equity curve & max drawdown
+  let equity = 0, peak = 0, maxDD = 0;
+  const eqCurve = trades.map(t => {
+    equity += t.net_profit;
+    if (equity > peak) peak = equity;
+    const dd = peak - equity;
+    if (dd > maxDD) maxDD = dd;
+    return equity;
+  });
+
+  // Streaks
+  let curStreak = 0, maxWinStreak = 0, maxLossStreak = 0;
+  let prevResult = null;
+  trades.forEach(t => {
+    const w = t.net_profit > 0;
+    if (prevResult === null || prevResult !== w) { curStreak = 1; }
+    else { curStreak++; }
+    if (w)  maxWinStreak  = Math.max(maxWinStreak, curStreak);
+    else    maxLossStreak = Math.max(maxLossStreak, curStreak);
+    prevResult = w;
+  });
+
+  // By symbol
+  const bySymbol = {};
+  trades.forEach(t => {
+    bySymbol[t.symbol] = (bySymbol[t.symbol] || 0) + t.net_profit;
+  });
+
+  // By month
+  const byMonth = {};
+  trades.forEach(t => {
+    const m = t.close_time.slice(0, 7);
+    byMonth[m] = (byMonth[m] || 0) + t.net_profit;
+  });
+
+  // By hour
+  const byHour = Array(24).fill(0);
+  trades.forEach(t => {
+    try { const h = parseInt(t.entry_time.split(' ')[1].split(':')[0]); byHour[h]++; } catch(e){}
+  });
+
+  return { total, wins: wins.length, losses: losses.length, totalPnL, grossWin, grossLoss,
+           profitFactor, avgWin, avgLoss, winRate, expectancy, eqCurve,
+           maxDD, maxWinStreak, maxLossStreak, bySymbol, byMonth, byHour };
+}
+
+// ══════════════════════════════════════════
+// KPIs
+// ══════════════════════════════════════════
+function renderKPIs(m) {
+  const pnlEl = document.getElementById('k-pnl');
+  pnlEl.textContent = (m.totalPnL >= 0 ? '+' : '') + '$' + fmt(m.totalPnL);
+  pnlEl.className = 'kvalue ' + (m.totalPnL >= 0 ? 'positive' : 'negative');
+  document.getElementById('kc-pnl-sub'); // skip
+  document.getElementById('k-pnl-sub').textContent =
+    '總盈利 $' + fmt(m.grossWin) + ' | 總虧損 $' + fmt(m.grossLoss);
+
+  const wr = (m.winRate * 100).toFixed(1);
+  document.getElementById('k-wr').textContent = wr + '%';
+  document.getElementById('k-wr').className = 'kvalue ' + (m.winRate >= 0.5 ? 'positive' : 'negative');
+  document.getElementById('kc-wr').className = 'kcard ' + (m.winRate >= 0.5 ? 'green' : 'red');
+  document.getElementById('k-wr-sub').textContent = m.wins + ' 盈 / ' + m.losses + ' 虧';
+
+  document.getElementById('k-pf').textContent = m.profitFactor >= 999 ? '∞' : m.profitFactor.toFixed(2);
+
+  document.getElementById('k-dd').textContent = '-$' + fmt(m.maxDD);
+  document.getElementById('k-dd-sub').textContent = '最大峰谷回撤';
+
+  document.getElementById('k-total').textContent = m.total;
+  document.getElementById('k-total-sub').textContent =
+    '平均盈利 $' + fmt(m.avgWin) + ' | 平均虧損 $' + fmt(m.avgLoss);
+
+  const expEl = document.getElementById('k-exp');
+  expEl.textContent = (m.expectancy >= 0 ? '+' : '') + '$' + fmt(m.expectancy);
+  expEl.className = 'kvalue ' + (m.expectancy >= 0 ? 'positive' : 'negative');
+}
+
+// ══════════════════════════════════════════
+// Charts
+// ══════════════════════════════════════════
+function renderCharts(trades, m) {
+  destroyCharts();
+
+  // 1) Equity Curve
+  const labels = trades.map((t,i) => '#' + (i+1) + ' ' + t.symbol);
+  charts.equity = new Chart('chart-equity', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: '累計損益 (USD)',
+        data: m.eqCurve,
+        borderColor: '#00d4aa',
+        borderWidth: 2,
+        pointRadius: trades.length > 50 ? 0 : 3,
+        pointBackgroundColor: '#00d4aa',
+        fill: true,
+        backgroundColor: ctx => {
+          const g = ctx.chart.ctx.createLinearGradient(0,0,0,300);
+          g.addColorStop(0,'rgba(0,212,170,0.2)');
+          g.addColorStop(1,'rgba(0,212,170,0)');
+          return g;
+        },
+        tension: 0.35
+      }]
+    },
+    options: baseOpts('equity')
+  });
+
+  // 2) Monthly P&L
+  const months = Object.keys(m.byMonth).sort();
+  const monthVals = months.map(k => m.byMonth[k]);
+  charts.monthly = new Chart('chart-monthly', {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [{
+        label: '月損益',
+        data: monthVals,
+        backgroundColor: monthVals.map(v => v >= 0 ? 'rgba(0,212,170,0.6)' : 'rgba(255,71,87,0.6)'),
+        borderRadius: 6
+      }]
+    },
+    options: baseOpts('bar')
+  });
+
+  // 3) Symbol doughnut
+  const syms = Object.keys(m.bySymbol);
+  const symVals = syms.map(k => m.bySymbol[k]);
+  charts.symbol = new Chart('chart-symbol', {
+    type: 'doughnut',
+    data: {
+      labels: syms,
+      datasets: [{
+        data: symVals.map(Math.abs),
+        backgroundColor: ['#00d4aa','#4f8ef7','#ffd32a','#ff4757','#7c3aed','#f97316'],
+        borderWidth: 0,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position:'right', labels:{ color:'#7a8499', font:{size:11}, boxWidth:12 } },
+        tooltip: {
+          callbacks: { label: ctx => ' $' + fmt(symVals[ctx.dataIndex]) }
+        }
+      },
+      cutout: '65%'
+    }
+  });
+
+  // 4) Win/Loss doughnut
+  charts.winloss = new Chart('chart-winloss', {
+    type: 'doughnut',
+    data: {
+      labels: ['盈利 ' + m.wins, '虧損 ' + m.losses],
+      datasets: [{
+        data: [m.wins, m.losses],
+        backgroundColor: ['rgba(0,212,170,0.7)','rgba(255,71,87,0.7)'],
+        borderWidth: 0, hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout:'65%',
+      plugins: {
+        legend: { position:'bottom', labels:{ color:'#7a8499', font:{size:11}, boxWidth:10 } }
+      }
+    }
+  });
+
+  // 5) Hour bar
+  charts.hour = new Chart('chart-hour', {
+    type: 'bar',
+    data: {
+      labels: Array.from({length:24},(_,i) => i+'h'),
+      datasets: [{
+        label: '交易次數',
+        data: m.byHour,
+        backgroundColor: 'rgba(79,142,247,0.6)',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      ...baseOpts('bar'),
+      plugins: { legend:{display:false} }
+    }
+  });
+
+  // 6) Streak bar
+  charts.streak = new Chart('chart-streak', {
+    type: 'bar',
+    data: {
+      labels: ['最長連勝','最長連虧'],
+      datasets: [{
+        data: [m.maxWinStreak, m.maxLossStreak],
+        backgroundColor: ['rgba(0,212,170,0.7)','rgba(255,71,87,0.7)'],
+        borderRadius: 8
+      }]
+    },
+    options: {
+      ...baseOpts('bar'),
+      plugins: { legend:{display:false} },
+      scales: {
+        y:{ ticks:{ stepSize:1 } }
+      }
+    }
+  });
+}
+
+function baseOpts(type) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode:'index', intersect:false },
+    plugins: {
+      legend: { display: type==='equity', labels:{ color:'#7a8499', font:{size:11} } },
+      tooltip: {
+        backgroundColor: '#0d1329',
+        titleColor: '#eef0f6',
+        bodyColor: '#7a8499',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        padding: 12
+      }
+    },
+    scales: {
+      x: { ticks:{ color:'#4a5568', maxTicksLimit: 12, maxRotation:0 } },
+      y: { ticks:{ color:'#4a5568', callback: v => '$' + v.toFixed(0) } }
+    }
+  };
+}
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => c && c.destroy && c.destroy());
+  charts = {};
+}
+
+// ══════════════════════════════════════════
+// Table
+// ══════════════════════════════════════════
+function renderTable(trades, filter) {
+  let rows = [...trades].reverse(); // newest first
+  if (filter === 'win')  rows = rows.filter(t => t.net_profit > 0);
+  if (filter === 'loss') rows = rows.filter(t => t.net_profit < 0);
+  if (filter && filter !== 'all' && filter !== 'win' && filter !== 'loss')
+    rows = rows.filter(t => t.symbol.includes(filter));
+
+  document.getElementById('tbl-sub').textContent = '顯示 ' + rows.length + ' 筆（最新在前）';
+
+  const body = document.getElementById('tbl-body');
+  body.innerHTML = rows.map((t,i) => `
+    <tr>
+      <td class="nt">${i+1}</td>
+      <td class="sym">${t.symbol}</td>
+      <td><span class="tag ${t.direction==='BUY'?'tag-b':'tag-s'}">${t.direction}</span></td>
+      <td class="nt">${t.volume}</td>
+      <td class="nt">${t.entry_price}</td>
+      <td class="nt">${t.close_price}</td>
+      <td class="nt">${t.entry_time}</td>
+      <td class="nt">${t.close_time}</td>
+      <td class="nt">${fmtDur(t.hold_minutes)}</td>
+      <td class="${t.profit>=0?'pos':'neg'}">${t.profit>=0?'+':''}$${fmt(t.profit)}</td>
+      <td class="${t.net_profit>=0?'pos':'neg'}" style="font-weight:700">${t.net_profit>=0?'+':''}$${fmt(t.net_profit)}</td>
+    </tr>
+  `).join('');
+}
+
+function filterTbl(f, el) {
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('act'));
+  el.classList.add('act');
+  renderTable(allTrades, f);
+}
+
+// ══════════════════════════════════════════
+// Helpers
+// ══════════════════════════════════════════
+function fmt(n) { return Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function fmtDur(m) {
+  if (!m) return '—';
+  if (m < 60) return m + 'm';
+  if (m < 1440) return Math.floor(m/60) + 'h ' + (m%60) + 'm';
+  return Math.floor(m/1440) + 'd';
+}
+const positive = n => n >= 0;
+
+// ══════════════════════════════════════════
+// Demo data (for testing)
+// ══════════════════════════════════════════
+function loadDemo() {
+  const syms = ['XAUUSD','GBPUSD','EURUSD','XAUUSD','GBPUSD'];
+  const dirs  = ['BUY','SELL','BUY','SELL','BUY'];
+  const trades = [];
+  let d = new Date('2026-05-01');
+  for (let i = 0; i < 45; i++) {
+    d = new Date(d.getTime() + Math.random()*86400000*2);
+    const si   = i % syms.length;
+    const sym  = syms[si];
+    const dir  = dirs[Math.floor(Math.random()*2)];
+    const vol  = sym==='GBPUSD' ? 0.02 : 0.01;
+    const pr   = sym.includes('XAU') ? 4480 + Math.random()*80 : 1.34 + Math.random()*0.015;
+    const w    = Math.random() > 0.42;
+    const pnl  = w ? +(Math.random()*35+5).toFixed(2) : -(Math.random()*18+3).toFixed(2);
+    const comm = -0.50;
+    const fmt2 = (n,d=5) => n.toFixed(d);
+    const ts   = dt => dt.toISOString().slice(0,16).replace('T',' ');
+    const entry = new Date(d);
+    const exit  = new Date(d.getTime() + (30+Math.random()*240)*60000);
+    trades.push({
+      ticket: 56000000+i, position_id: 56000000+i, symbol: sym,
+      direction: dir, volume: vol,
+      entry_price: fmt2(pr), close_price: fmt2(pr + (w?0.01:-0.01)),
+      entry_time: ts(entry), close_time: ts(exit),
+      profit: pnl, commission: comm, swap: -0.10,
+      net_profit: +(pnl+comm-0.1).toFixed(2),
+      hold_minutes: Math.floor((exit-entry)/60000),
+      pct_gain: 0, magic: 20260604, comment: 'AI_v2|demo'
+    });
+  }
+  loadData({
+    account: { login:5050034212, name:'Emily Chen', currency:'USD',
+               balance:100000, equity:100350, exported_at:'2026-06-11 20:00' },
+    trades
+  });
+}
+</script>
+</body>
+</html>
