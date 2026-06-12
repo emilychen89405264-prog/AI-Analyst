@@ -1,5 +1,1 @@
-{
-  "rewrites": [
-    { "source": "/trade_history.json", "destination": "/trade_history.json" }
-  ]
-}
+{}
