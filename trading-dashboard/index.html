@@ -143,27 +143,24 @@ footer{text-align:center;padding:22px 0;color:var(--t3);font-size:11px;border-to
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    <span id="last-updated">尚未載入資料</span>
+    <span id="last-updated">載入中...</span>
     <span class="pill pill-green">⚡ EA v2.0</span>
-    <button class="btn btn-ghost" onclick="document.getElementById('fileInput').click()">📁 選擇新檔案</button>
+    <button class="btn btn-ghost" onclick="fetchFromGitHub()" title="從 GitHub 抓最新資料">🔄 刷新</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('fileInput').click()">📁 手動上傳</button>
     <input type="file" id="fileInput" accept=".json" onchange="handleFile(this.files[0])">
   </div>
 </header>
 
 <!-- Drop Zone -->
 <div id="drop-area" onclick="document.getElementById('fileInput').click()">
-  <div class="icon">📊</div>
-  <h2>拖入 trade_history.json</h2>
-  <p>
-    先在 MT5 執行 <strong>TradeExporter</strong> 腳本產生 JSON 檔<br>
-    檔案位置：<code style="color:var(--green);font-size:12px;">MT5資料夾\MQL5\Files\trade_history.json</code><br>
-    然後把檔案拖到這裡，或點擊選擇
-  </p>
-  <button class="btn btn-g" onclick="event.stopPropagation();document.getElementById('fileInput').click()">
-    📁 選擇 JSON 檔
+  <div class="icon">🔄</div>
+  <h2>正在從 GitHub 自動載入...</h2>
+  <p style="margin-bottom:16px;">資料每天 23:45 自動更新，重新整理頁面即可看到最新交易紀錄</p>
+  <button class="btn btn-ghost btn-gap" onclick="event.stopPropagation();document.getElementById('fileInput').click()">
+    📁 手動上傳 JSON
   </button>
   <button class="btn btn-ghost btn-gap" onclick="event.stopPropagation();loadDemo()">
-    🎮 載入示範資料
+    🎮 示範資料
   </button>
 </div>
 
@@ -339,11 +336,32 @@ function handleFile(file) {
   reader.readAsText(file);
 }
 
-// 頁面載入時自動恢復資料
-document.addEventListener('DOMContentLoaded', async () => {
-  // 1) 先嘗試從同目錄讀取 trade_history.json（GitHub Pages 模式）
+// GitHub Raw URL（永遠是最新版本）
+const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/emilychen89405264-prog/AI-Analyst/main/trading-dashboard/trade_history.json';
+
+async function fetchFromGitHub() {
+  document.getElementById('last-updated').textContent = '載入中...';
   try {
-    const res = await fetch('./trade_history.json', { cache: 'no-cache' });
+    const res = await fetch(GITHUB_RAW_URL + '?t=' + Date.now()); // 防止快取
+    if (res.ok) {
+      const data = await res.json();
+      loadData(data);
+      dropArea.style.display = 'none';
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+// 頁面載入時自動從 GitHub 抓最新資料
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1) 直接從 GitHub Raw 抓最新資料
+  const ok = await fetchFromGitHub();
+  if (ok) return;
+
+  // 2) GitHub 失敗 → 嘗試 Vercel 靜態檔
+  try {
+    const res = await fetch('./trade_history.json', { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       loadData(data);
@@ -352,15 +370,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch(e) {}
 
-  // 2) 退而求其次：從 localStorage 恢復（本機模式）
+  // 3) 最後退路：localStorage
   const saved = localStorage.getItem('gi_trade_data');
   if (saved) {
     try {
       loadData(JSON.parse(saved));
       dropArea.style.display = 'none';
-    } catch(e) {
-      localStorage.removeItem('gi_trade_data');
-    }
+    } catch(e) { localStorage.removeItem('gi_trade_data'); }
+  } else {
+    document.getElementById('last-updated').textContent = '無法自動載入，請手動上傳';
   }
 });
 
