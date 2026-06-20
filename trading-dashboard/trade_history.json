@@ -3,9 +3,9 @@
     "login": 5050034212,
     "name": "Emily Chen",
     "currency": "USD",
-    "balance": 104758.29,
-    "equity": 104758.29,
-    "exported_at": "2026.06.18 23:30"
+    "balance": 104763.62,
+    "equity": 104763.62,
+    "exported_at": "2026.06.19 23:30"
   },
   "trades": [
     {"ticket":56205693468,"position_id":56518364667,"symbol":"XAUUSD","direction":"BUY","volume":0.10,"entry_price":4559.43000,"close_price":4562.99000,"entry_time":"2026.05.05 14:56","close_time":"2026.05.05 15:06","profit":35.60,"commission":0.00,"swap":0.00,"net_profit":35.60,"hold_minutes":10,"pct_gain":0.0781,"magic":0,"comment":""},
@@ -600,6 +600,13 @@
     {"ticket":56811370930,"position_id":57146926772,"symbol":"GBPUSD","direction":"SELL","volume":0.01,"entry_price":1.32106,"close_price":1.32387,"entry_time":"2026.06.18 15:00","close_time":"2026.06.18 15:20","profit":-2.81,"commission":0.00,"swap":0.00,"net_profit":-2.81,"hold_minutes":20,"pct_gain":-0.2127,"magic":20260604,"comment":"[sl 1.32387]"},
     {"ticket":56812535426,"position_id":57147740818,"symbol":"XAUUSD","direction":"SELL","volume":0.01,"entry_price":4255.25000,"close_price":4253.00000,"entry_time":"2026.06.18 15:30","close_time":"2026.06.18 16:09","profit":2.25,"commission":0.00,"swap":0.00,"net_profit":2.25,"hold_minutes":39,"pct_gain":0.0529,"magic":20260604,"comment":"[sl 4253.00]"},
     {"ticket":56813047286,"position_id":57147740790,"symbol":"GBPUSD","direction":"SELL","volume":0.01,"entry_price":1.32438,"close_price":1.32403,"entry_time":"2026.06.18 15:30","close_time":"2026.06.18 16:30","profit":0.35,"commission":0.00,"swap":0.00,"net_profit":0.35,"hold_minutes":60,"pct_gain":0.0264,"magic":20260604,"comment":"[sl 1.32403]"},
-    {"ticket":56813721826,"position_id":57149178739,"symbol":"XAUUSD","direction":"SELL","volume":0.01,"entry_price":4263.32000,"close_price":4262.41000,"entry_time":"2026.06.18 16:30","close_time":"2026.06.18 16:51","profit":0.91,"commission":0.00,"swap":0.00,"net_profit":0.91,"hold_minutes":21,"pct_gain":0.0213,"magic":20260604,"comment":"[sl 4262.41]"}
+    {"ticket":56813721826,"position_id":57149178739,"symbol":"XAUUSD","direction":"SELL","volume":0.01,"entry_price":4263.32000,"close_price":4262.41000,"entry_time":"2026.06.18 16:30","close_time":"2026.06.18 16:51","profit":0.91,"commission":0.00,"swap":0.00,"net_profit":0.91,"hold_minutes":21,"pct_gain":0.0213,"magic":20260604,"comment":"[sl 4262.41]"},
+    {"ticket":56830179369,"position_id":57165692293,"symbol":"GBPUSD","direction":"SELL","volume":0.02,"entry_price":1.32310,"close_price":1.32302,"entry_time":"2026.06.19 12:30","close_time":"2026.06.19 13:47","profit":0.16,"commission":0.00,"swap":0.00,"net_profit":0.16,"hold_minutes":77,"pct_gain":0.0060,"magic":20260602,"comment":"[sl 1.32302]"},
+    {"ticket":56831203834,"position_id":57165692279,"symbol":"XAUUSD","direction":"SELL","volume":0.01,"entry_price":4162.72000,"close_price":4151.26000,"entry_time":"2026.06.19 12:30","close_time":"2026.06.19 14:45","profit":11.46,"commission":0.00,"swap":0.00,"net_profit":11.46,"hold_minutes":135,"pct_gain":0.2753,"magic":20260601,"comment":"[sl 4151.26]"},
+    {"ticket":56831653984,"position_id":57167141885,"symbol":"GBPUSD","direction":"SELL","volume":0.02,"entry_price":1.32348,"close_price":1.32339,"entry_time":"2026.06.19 14:00","close_time":"2026.06.19 15:09","profit":0.18,"commission":0.00,"swap":0.00,"net_profit":0.18,"hold_minutes":69,"pct_gain":0.0068,"magic":20260602,"comment":"[sl 1.32339]"},
+    {"ticket":56832467071,"position_id":57168222508,"symbol":"XAUUSD","direction":"SELL","volume":0.01,"entry_price":4152.55000,"close_price":4173.35000,"entry_time":"2026.06.19 15:00","close_time":"2026.06.19 15:53","profit":-20.80,"commission":0.00,"swap":0.00,"net_profit":-20.80,"hold_minutes":53,"pct_gain":-0.5009,"magic":20260601,"comment":"[sl 4173.35]"},
+    {"ticket":56832943404,"position_id":57169480115,"symbol":"XAUUSD","direction":"SELL","volume":0.01,"entry_price":4179.36000,"close_price":4175.61000,"entry_time":"2026.06.19 16:00","close_time":"2026.06.19 16:08","profit":3.75,"commission":0.00,"swap":0.00,"net_profit":3.75,"hold_minutes":8,"pct_gain":0.0897,"magic":20260601,"comment":"[sl 4175.61]"},
+    {"ticket":56833928763,"position_id":57168762378,"symbol":"GBPUSD","direction":"SELL","volume":0.02,"entry_price":1.32256,"close_price":1.32247,"entry_time":"2026.06.19 15:30","close_time":"2026.06.19 16:56","profit":0.18,"commission":0.00,"swap":0.00,"net_profit":0.18,"hold_minutes":86,"pct_gain":0.0068,"magic":20260602,"comment":"[sl 1.32247]"},
+    {"ticket":56835576606,"position_id":57170250675,"symbol":"XAUUSD","direction":"SELL","volume":0.01,"entry_price":4163.99000,"close_price":4153.59000,"entry_time":"2026.06.19 16:30","close_time":"2026.06.19 18:20","profit":10.40,"commission":0.00,"swap":0.00,"net_profit":10.40,"hold_minutes":110,"pct_gain":0.2498,"magic":20260601,"comment":"[sl 4153.59]"}
   ]
 }
