@@ -31,8 +31,9 @@ if ([string]::IsNullOrWhiteSpace($status)) {
     exit 0
 }
 
-git add trade_history.json
+git add "trading-dashboard/trade_history.json"
 git commit -m "auto: update trade history $timestamp"
+git pull origin main --rebase
 git push
 
 if ($LASTEXITCODE -eq 0) {
